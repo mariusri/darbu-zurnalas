@@ -1,0 +1,135 @@
+--- a/www/app.js
++++ b/www/app.js
+@@ -36,3 +36,4 @@
+     user: null,
+-    isAdmin: false
++    isAdmin: false,
++    crew: (() => { try { const c = JSON.parse(lsGet("crew") || "null"); return Array.isArray(c) ? c : ["Linas", "Tomas", "Vilius"]; } catch (_) { return ["Linas", "Tomas", "Vilius"]; } })()
+   };
+@@ -232,6 +233,43 @@
+   }
+-  function knownWorkers() {
+-    const s = new Set();
+-    for (const e of state.entries) for (const w of e.workers || []) if (w.name) s.add(w.name.trim());
+-    return [...s].sort((a, b) => a.localeCompare(b, "lt"));
++  function knownWorkers() { return state.crew.slice(); }
++  async function loadCrew() {
++    try {
++      const { data, error } = await sb.from("workers").select("name").order("name");
++      if (error) throw error;
++      state.crew = data.map(r => r.name);
++      lsSet("crew", JSON.stringify(state.crew));
++      if (!ed && !$("#crew-form")) render();
++    } catch (_) {}
++  }
++  function workerRows(d) {
++    const names = state.crew.slice();
++    for (const w of d.workers) if (w.name && !names.includes(w.name)) names.push(w.name);
++    const def = d.workers.find(w => w.from && w.to) || ed.defTimes || { from: "08:00", to: "17:00" };
++    return names.map((n, i) => {
++      const w = d.workers.find(x => x.name === n);
++      const from = w ? w.from : def.from, to = w ? w.to : def.to;
++      return `<div class="w-row${w ? "" : " off"}" data-name="${esc(n)}">
++        <label class="w-who"><input type="checkbox" class="w-on" id="w-on-${i}" ${w ? "checked" : ""}><span>${esc(n)}</span></label>
++        <span class="h"></span>
++        <div class="w-times"><input class="w-from" id="w-from-${i}" type="time" value="${esc(from)}" aria-label="${esc(n)}: pradžia"><span aria-hidden="true">–</span><input class="w-to" id="w-to-${i}" type="time" value="${esc(to)}" aria-label="${esc(n)}: pabaiga"></div>
++      </div>`;
++    }).join("");
++  }
++  function openCrew(msg) {
++    $("#sheet-host").innerHTML = `<div class="sheet-bg" id="sheet-bg"><form class="sheet" id="crew-form" novalidate>
++      <h2>Darbuotojų sąrašas</h2>
++      <p class="note">Šie vardai rodomi pasirenkant, kas dirbo. Pašalinus vardą, seni įrašai nepasikeičia.</p>
++      <table class="mat-table"><tbody>${state.crew.map(n => `<tr><td>${esc(n)}</td><td class="q"><button type="button" class="btn danger" data-act="crew-rm" data-name="${esc(n)}">Pašalinti</button></td></tr>`).join("") || `<tr><td class="note">Sąrašas tuščias.</td></tr>`}</tbody></table>
++      <div class="row-between"><input id="crew-new" placeholder="Naujas vardas" style="flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px" autocapitalize="words"><button type="submit" class="btn primary">Pridėti</button></div>
++      ${msg ? `<p class="err">${esc(msg)}</p>` : ""}
++      <div class="sheet-actions"><button type="button" class="btn" data-act="close">Uždaryti</button></div>
++    </form></div>`;
++    $("#crew-form").addEventListener("submit", async ev => {
++      ev.preventDefault();
++      const name = $("#crew-new").value.trim();
++      if (!name) return;
++      const { error } = await sb.from("workers").insert({ name });
++      if (error) { openCrew(/duplicate/i.test(error.message) ? "Toks vardas jau yra." : "Nepavyko pridėti: " + error.message); return; }
++      await loadCrew(); openCrew();
++    });
+   }
+@@ -246,3 +284,3 @@
+     if (!ed.data.materials.length) ed.data.materials.push({ name: "", qty: "", unit: "vnt." });
+-    if (!ed.data.workers.length) ed.data.workers.push({ name: "", from: "08:00", to: "17:00" });
++    ed.defTimes = (last?.workers || []).find(w => w.from && w.to) || { from: "08:00", to: "17:00" };
+     drawEditor();
+@@ -254,3 +292,3 @@
+     ed.data.work = $("#f-work").value;
+-    ed.data.workers = [...document.querySelectorAll(".w-row")].map(r => ({ name: $(".w-name", r).value, from: $(".w-from", r).value, to: $(".w-to", r).value }));
++    ed.data.workers = [...document.querySelectorAll(".w-row")].filter(r => $(".w-on", r).checked).map(r => ({ name: r.dataset.name, from: $(".w-from", r).value, to: $(".w-to", r).value }));
+     ed.data.materials = [...document.querySelectorAll(".mat-row")].map(r => ({ name: $(".m-name", r).value, qty: $(".m-qty", r).value, unit: $(".m-unit", r).value }));
+@@ -260,4 +298,6 @@
+     document.querySelectorAll(".w-row").forEach(r => {
+-      const h = workerHours({ from: $(".w-from", r).value, to: $(".w-to", r).value });
+-      if ($(".w-name", r).value.trim()) sum += h;
++      const on = $(".w-on", r).checked;
++      r.classList.toggle("off", !on);
++      const h = on ? workerHours({ from: $(".w-from", r).value, to: $(".w-to", r).value }) : 0;
++      sum += h;
+       $(".h", r).textContent = h ? fmtQ(h) + " val." : "";
+@@ -275,10 +315,4 @@
+       <div class="field"><span class="lbl">Dirbę žmonės ir laikas</span>
+-        <datalist id="w-list">${knownWorkers().map(n => `<option value="${esc(n)}"></option>`).join("")}</datalist>
+-        <div class="mat-rows" id="w-rows">${d.workers.map((w, i) => `<div class="w-row">
+-          <input class="w-name" id="w-name-${i}" list="w-list" placeholder="Vardas Pavardė" value="${esc(w.name)}" aria-label="Darbuotojas" autocapitalize="words">
+-          <input class="w-from" id="w-from-${i}" type="time" value="${esc(w.from)}" aria-label="Pradžia">
+-          <input class="w-to" id="w-to-${i}" type="time" value="${esc(w.to)}" aria-label="Pabaiga">
+-          <button type="button" class="icon-btn" data-act="wrm" data-i="${i}" aria-label="Pašalinti darbuotoją">×</button>
+-          <span class="h"></span></div>`).join("")}</div>
+-        <div class="row-between"><button type="button" class="btn" data-act="wadd">+ Pridėti žmogų</button><span class="w-sum" id="w-sum"></span></div>
++        <div class="mat-rows" id="w-rows">${workerRows(d)}</div>
++        <div class="row-between">${state.crew.length ? "" : `<span class="note">Darbuotojų sąrašas tuščias – administratorius gali jį papildyti meniu ⋯.</span>`}<span class="w-sum" id="w-sum"></span></div>
+       </div>
+@@ -312,3 +346,3 @@
+     $("#ed-form").addEventListener("submit", ev => { ev.preventDefault(); save(); });
+-    $("#w-rows").addEventListener("input", updateWorkerHours);
++    $("#w-rows").addEventListener("input", updateWorkerHours); $("#w-rows").addEventListener("change", updateWorkerHours);
+     $("#f-cam").addEventListener("change", ev => addPhotos([...ev.target.files]));
+@@ -422,2 +456,3 @@
+       <button data-act="refresh">Atnaujinti duomenis</button>
++      ${state.isAdmin ? `<button data-act="crew">Darbuotojų sąrašas</button>` : ""}
+       <button data-act="logout">Atsijungti</button>
+@@ -441,4 +476,2 @@
+     else if (a === "close") closeSheet();
+-    else if (a === "wadd") { syncForm(); const prev = ed.data.workers[ed.data.workers.length - 1] || {}; ed.data.workers.push({ name: "", from: prev.from || "08:00", to: prev.to || "17:00" }); drawEditor(); const r = document.querySelectorAll(".w-name"); r[r.length - 1]?.focus(); }
+-    else if (a === "wrm") { syncForm(); ed.data.workers.splice(+t.dataset.i, 1); if (!ed.data.workers.length) ed.data.workers.push({ name: "", from: "08:00", to: "17:00" }); drawEditor(); }
+     else if (a === "madd") { syncForm(); ed.data.materials.push({ name: "", qty: "", unit: "vnt." }); drawEditor(); const r = document.querySelectorAll(".m-name"); r[r.length - 1]?.focus(); }
+@@ -458,2 +491,4 @@
+     else if (a === "setup") { $("#lb-host").innerHTML = ""; openSetup(); }
++    else if (a === "crew") { $("#lb-host").innerHTML = ""; openCrew(); }
++    else if (a === "crew-rm") { const n = t.dataset.name; sb.from("workers").delete().eq("name", n).then(async ({ error }) => { if (error) { openCrew("Nepavyko pašalinti."); return; } await loadCrew(); openCrew(); }); }
+   });
+@@ -536,2 +571,3 @@
+     render();
++    loadCrew();
+     await loadEntries();
+--- a/www/style.css
++++ b/www/style.css
+@@ -108,3 +108,3 @@
+ .field { display: flex; flex-direction: column; gap: 5px; }
+-.field input, .field textarea, .mat-row input, .mat-row select, .w-row input { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; width: 100%; min-width: 0; }
++.field input, .field textarea, .mat-row input, .mat-row select, .w-times input { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; width: 100%; min-width: 0; }
+ .field textarea { min-height: 96px; resize: vertical; }
+@@ -112,8 +112,10 @@
+ .mat-row { display: grid; grid-template-columns: minmax(0, 1fr) 70px 76px 38px; gap: 6px; }
+-.w-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(38px, auto); gap: 6px; align-items: center; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+-.w-row .w-name { grid-column: 1 / 3; grid-row: 1; }
+-.w-row .w-from { grid-column: 1; grid-row: 2; }
+-.w-row .w-to { grid-column: 2; grid-row: 2; }
+-.w-row .icon-btn { grid-column: 3; grid-row: 1; justify-self: end; }
+-.w-row .h { grid-column: 3; grid-row: 2; font-family: var(--f-mono); font-size: .78rem; color: var(--muted); white-space: nowrap; text-align: right; }
++.w-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); }
++.w-who { display: flex; gap: 10px; align-items: center; font-weight: 600; min-width: 0; cursor: pointer; }
++.w-who input { width: 22px; height: 22px; margin: 0; padding: 0; border: 0; accent-color: var(--steel); flex-shrink: 0; }
++.w-row .h { font-family: var(--f-mono); font-size: .8rem; color: var(--muted); white-space: nowrap; }
++.w-times { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; padding-left: 32px; }
++.w-times input { flex: 1; min-width: 0; }
++.w-row.off .w-times { display: none; }
++.w-row.off .w-who span { color: var(--muted); font-weight: 400; }
+ .w-sum { font-family: var(--f-mono); font-size: .85rem; color: var(--muted); }
