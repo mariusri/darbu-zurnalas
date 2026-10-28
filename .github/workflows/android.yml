@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build:
@@ -335,6 +337,11 @@ jobs:
           test -n "$F" || { echo "Nerasta Supabase biblioteka"; exit 1; }
           cp "$F" www/vendor/supabase.js
 
+      - name: Paruošti svetainę
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+
       - name: Sugeneruoti ikonas
         run: |
           pip install --quiet pillow
@@ -372,3 +379,14 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest darbu-zurnalas.apk --title "Darbų žurnalas – naujausia versija" --notes "Versija 1.${{ github.run_number }}"
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Paskelbti svetainę
+        id: deployment
+        uses: actions/deploy-pages@v4
