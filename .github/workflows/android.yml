@@ -307,6 +307,14 @@ jobs:
           BUNDLE
           tr -d ' \n' < /tmp/bundle.b64 | base64 -d | tar xz --skip-old-files
 
+      - name: Pritaikyti pataisas
+        run: |
+          for f in patches/*.patch; do
+            [ -f "$f" ] || continue
+            echo "Taikoma $f"
+            patch -p1 < "$f"
+          done
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
