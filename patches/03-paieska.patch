@@ -1,0 +1,123 @@
+--- a/www/app.js
++++ b/www/app.js
+@@ -102,2 +102,3 @@
+     show("#view-month", app && state.view === "month");
++    show("#view-search", app && state.view === "search");
+     show("#fab", app && state.view === "day");
+@@ -109,3 +110,4 @@
+     $("#tab-month").setAttribute("aria-pressed", state.view === "month");
+-    state.view === "day" ? renderDay() : renderMonth();
++    $("#tab-search").setAttribute("aria-pressed", state.view === "search");
++    state.view === "day" ? renderDay() : state.view === "month" ? renderMonth() : renderSearch();
+     hydratePhotos();
+@@ -181,2 +183,56 @@
+ 
++  // ---------- Paieška ----------
++  const norm = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
++  function searchResults() {
++    const q = norm($("#q-text").value.trim()), from = $("#q-from").value, to = $("#q-to").value;
++    const words = q.split(/\s+/).filter(Boolean);
++    return state.entries.filter(e => {
++      if (from && e.date < from) return false;
++      if (to && e.date > to) return false;
++      if (!words.length) return true;
++      const hay = norm([e.object, e.work, e.author, ...(e.workers || []).map(w => w.name)].join(" "));
++      return words.every(w => hay.includes(w));
++    }).sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
++  }
++  function setRange(kind) {
++    const now = new Date(); let a = "", b = "";
++    if (kind === "week") { a = weekStart(ymd(now)); b = addDays(a, 6); }
++    else if (kind === "month") { a = ymd(new Date(now.getFullYear(), now.getMonth(), 1)); b = ymd(new Date(now.getFullYear(), now.getMonth() + 1, 0)); }
++    else if (kind === "prev") { a = ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)); b = ymd(new Date(now.getFullYear(), now.getMonth(), 0)); }
++    $("#q-from").value = a; $("#q-to").value = b;
++    renderSearch();
++  }
++  function renderSearch() {
++    const objs = [...new Set(state.entries.map(e => (e.object || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "lt"));
++    $("#obj-list").innerHTML = objs.map(o => `<option value="${esc(o)}"></option>`).join("");
++    const body = $("#search-body");
++    if (!state.loaded) { body.innerHTML = `<p class="status">Kraunami įrašai…</p>`; return; }
++    const list = searchResults();
++    const any = $("#q-text").value.trim() || $("#q-from").value || $("#q-to").value;
++    if (!list.length) {
++      body.innerHTML = `<div class="empty"><strong>Nieko nerasta</strong><span>${any ? "Pabandykite trumpesnį žodį arba platesnį laikotarpį." : "Įrašų dar nėra."}</span></div>`;
++      return;
++    }
++    const hrs = list.reduce((t, e) => t + entryHours(e), 0);
++    const days = new Set(list.map(e => e.date)).size;
++    const tot = totals(list);
++    const MAX = 60;
++    const shown = list.slice(0, MAX);
++    let html = `<div class="month-card">
++      <div class="stats">
++        <div><b>${list.length}</b><span class="lbl">įrašai</span></div>
++        <div><b>${days}</b><span class="lbl">dienos</span></div>
++        <div><b>${fmtQ(hrs)}</b><span class="lbl">valandos</span></div>
++      </div>
++      ${tot.length ? `<details><summary class="lbl">Medžiagos iš viso (${tot.length})</summary>${matTable(tot)}</details>` : ""}
++    </div>`;
++    let lastDate = "";
++    for (const e of shown) {
++      if (e.date !== lastDate) { html += `<button class="date-sep" data-goto="${e.date}">${esc(longDate(e.date))} <span>atidaryti dieną ›</span></button>`; lastDate = e.date; }
++      html += entryHtml(e);
++    }
++    if (list.length > MAX) html += `<p class="status">Rodomi ${MAX} naujausi iš ${list.length}. Susiaurinkite paiešką.</p>`;
++    body.innerHTML = html;
++  }
++
+   function renderMonth() {
+@@ -501,2 +557,7 @@
+   $("#tab-month").onclick = () => { state.view = "month"; state.month = state.date.slice(0, 7); render(); };
++  $("#tab-search").onclick = () => { state.view = "search"; render(); setTimeout(() => { if (!$("#q-text").value) $("#q-text").focus(); }, 50); };
++  let qTimer = null;
++  $("#search-form").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(renderSearch, 200); });
++  $("#search-form").addEventListener("submit", ev => { ev.preventDefault(); renderSearch(); $("#q-text").blur(); });
++  $("#q-chips").addEventListener("click", ev => { const b = ev.target.closest("[data-range]"); if (b) setRange(b.dataset.range); });
+   const shiftMonth = n => { const [y, m] = state.month.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); state.month = d.getFullYear() + "-" + pad(d.getMonth() + 1); render(); };
+@@ -510,3 +571,3 @@
+     if ($("#sheet-host").innerHTML) { ed ? cancelEditor() : closeSheet(); return; }
+-    if (state.screen === "app" && state.view === "month") { state.view = "day"; render(); return; }
++    if (state.screen === "app" && state.view !== "day") { state.view = "day"; render(); return; }
+     const App = window.Capacitor?.Plugins?.App;
+--- a/www/style.css
++++ b/www/style.css
+@@ -155 +155,11 @@
+ @media (max-width: 400px) { .mat-row { grid-template-columns: minmax(0,1fr) 58px 68px 38px; } }
++
++/* Paieška */
++.search-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
++.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
++.chips { display: flex; flex-wrap: wrap; gap: 6px; }
++.chip-btn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 6px 12px; font-size: .9rem; font-weight: 600; color: var(--ink); }
++.date-sep { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; background: none; border: 0; padding: 4px 2px 0; text-align: left; font-family: var(--f-display); font-size: 1.1rem; font-weight: 600; color: var(--ink); }
++.date-sep span { font-family: var(--f-body); font-size: .85rem; font-weight: 600; color: var(--steel); white-space: nowrap; }
++details summary { cursor: pointer; padding: 4px 0; }
++.tabs button { padding: 6px 12px; }
+--- a/www/index.html
++++ b/www/index.html
+@@ -17,2 +17,3 @@
+         <button id="tab-month" aria-pressed="false">Mėnuo</button>
++        <button id="tab-search" aria-pressed="false">Paieška</button>
+       </div>
+@@ -72,2 +73,20 @@
+   </section>
++
++  <section id="view-search" class="stack16" hidden>
++    <form class="search-box" id="search-form" novalidate>
++      <label class="field"><span class="lbl">Objektas, adresas ar darbas</span><input id="q-text" type="search" list="obj-list" placeholder="pvz. Pavilnio" autocomplete="off"></label>
++      <datalist id="obj-list"></datalist>
++      <div class="row2">
++        <label class="field"><span class="lbl">Nuo</span><input id="q-from" type="date"></label>
++        <label class="field"><span class="lbl">Iki</span><input id="q-to" type="date"></label>
++      </div>
++      <div class="chips" id="q-chips">
++        <button type="button" class="chip-btn" data-range="week">Ši savaitė</button>
++        <button type="button" class="chip-btn" data-range="month">Šis mėnuo</button>
++        <button type="button" class="chip-btn" data-range="prev">Praėjęs mėnuo</button>
++        <button type="button" class="chip-btn" data-range="all">Visas laikas</button>
++      </div>
++    </form>
++    <div id="search-body" class="stack16"></div>
++  </section>
+ </div>
