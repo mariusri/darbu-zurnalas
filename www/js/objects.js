@@ -70,7 +70,7 @@
             ${row("El. paštas", o.client_email ? `<a href="mailto:${esc(o.client_email)}">${esc(o.client_email)}</a>` : "")}
             ${row("Galia", o.power_kw ? fmtQ(o.power_kw) + " kW" : "")}
             ${row("Inverteris", esc(o.inverter))}
-            ${row("Sutartis", [o.contract_date ? DZ.shortDate(o.contract_date) : "", o.contract_sum ? DZ.money(o.contract_sum) : ""].filter(Boolean).join(" · "))}
+            ${row("Sutartis", [o.contract_no ? "Nr. " + esc(o.contract_no) : "", o.contract_date ? DZ.shortDate(o.contract_date) : "", o.contract_sum ? DZ.money(o.contract_sum) : ""].filter(Boolean).join(" · "))}
           </tbody></table>
           ${o.notes ? `<p class="work">${esc(o.notes)}</p>` : ""}
           <div class="row-end">
@@ -104,7 +104,7 @@
   DZ.actions["obj-entry"] = () => { const o = S.objects.find(x => x.id === S.objectId); DZ.openEditor(null, { date: DZ.today(), object: o ? o.name : "" }); };
 
   function openObjEditor(o) {
-    const d = o || { name: "", address: "", client_name: "", client_phone: "", client_email: "", power_kw: "", inverter: "", contract_date: "", contract_sum: "", status: "sutartis", notes: "" };
+    const d = o || { name: "", address: "", client_name: "", client_phone: "", client_email: "", power_kw: "", inverter: "", contract_no: "", contract_date: "", contract_sum: "", status: "sutartis", notes: "" };
     const lead = DZ.isLead();
     const inp = (id, label, val, type = "text", extra = "") => `<label class="field"><span class="lbl">${label}</span><input id="${id}" type="${type}" value="${esc(val ?? "")}" ${extra}></label>`;
     DZ.openSheet(`
@@ -114,7 +114,7 @@
       <div class="row2">${inp("o-cname", "Klientas", d.client_name)}${inp("o-cphone", "Telefonas", d.client_phone, "tel")}</div>
       ${inp("o-cmail", "Kliento el. paštas", d.client_email, "email")}
       <div class="row2">${inp("o-kw", "Galia, kW", d.power_kw, "number", 'step="any" inputmode="decimal"')}${inp("o-inv", "Inverteris", d.inverter)}</div>
-      ${lead || !o ? `<div class="row2">${inp("o-cdate", "Sutarties data", d.contract_date, "date")}${inp("o-csum", "Sutarties suma, €", d.contract_sum, "number", 'step="any" inputmode="decimal"')}</div>` : ""}
+      ${lead || !o ? `${inp("o-cno", "Sutarties Nr. (bus akte)", d.contract_no)}<div class="row2">${inp("o-cdate", "Sutarties data", d.contract_date, "date")}${inp("o-csum", "Sutarties suma, €", d.contract_sum, "number", 'step="any" inputmode="decimal"')}</div>` : ""}
       <label class="field"><span class="lbl">Būsena</span><select id="o-status">${Object.entries(DZ.OBJ_STATUS).map(([k, v]) => `<option value="${k}" ${k === d.status ? "selected" : ""}>${v}</option>`).join("")}</select></label>
       <label class="field"><span class="lbl">Pastabos</span><textarea id="o-notes">${esc(d.notes)}</textarea></label>
       <p class="err" id="o-err" hidden></p>
@@ -131,7 +131,7 @@
         name: v("o-name"), address: v("o-addr"), client_name: v("o-cname"), client_phone: v("o-cphone"), client_email: v("o-cmail"),
         power_kw: v("o-kw") ? DZ.num(v("o-kw")) : null, inverter: v("o-inv"), status: v("o-status"), notes: $("#o-notes").value.trim(), updated_at: new Date().toISOString()
       };
-      if ($("#o-cdate")) { row.contract_date = v("o-cdate") || null; row.contract_sum = v("o-csum") ? DZ.num(v("o-csum")) : null; }
+      if ($("#o-cdate")) { row.contract_no = v("o-cno"); row.contract_date = v("o-cdate") || null; row.contract_sum = v("o-csum") ? DZ.num(v("o-csum")) : null; }
       if (!row.name) { err.hidden = false; err.textContent = "Įrašykite pavadinimą."; return; }
       const dup = DZ.findObject(row.name);
       if (dup && (!o || dup.id !== o.id)) { err.hidden = false; err.textContent = "Objektas tokiu pavadinimu jau yra."; return; }
