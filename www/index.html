@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Darbų žurnalas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Darbų žurnalas</h1><span id="sync"></span></div>
+    <div class="top-r">
+      <button class="icon-btn" id="search-btn" data-act="open-search" aria-label="Paieška" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" id="menu-btn" aria-label="Meniu" hidden>⋯</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="view-setup" class="card-form" hidden>
+    <h2>Serverio nustatymai</h2>
+    <p class="note">Įveskite Supabase projekto duomenis (Project Settings → API). Paprastai jų keisti nereikia.</p>
+    <form id="setup-form" class="stack" novalidate>
+      <label class="field"><span class="lbl">Project URL</span><input id="s-url" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co"></label>
+      <label class="field"><span class="lbl">Publishable / anon key</span><textarea id="s-key" rows="3" autocomplete="off" placeholder="sb_publishable_…"></textarea></label>
+      <p class="err" id="setup-err" hidden></p>
+      <button class="btn primary" type="submit">Išsaugoti</button>
+    </form>
+  </section>
+
+  <section id="view-login" class="card-form" hidden>
+    <h2>Prisijungimas</h2>
+    <form id="login-form" class="stack" novalidate>
+      <label class="field"><span class="lbl">El. paštas</span><input id="l-email" type="email" inputmode="email" autocomplete="username"></label>
+      <label class="field"><span class="lbl">Slaptažodis</span><input id="l-pass" type="password" autocomplete="current-password"></label>
+      <p class="err" id="login-err" hidden></p>
+      <button class="btn primary" type="submit" id="login-btn">Prisijungti</button>
+      <div class="row-between"><button class="linkbtn" type="button" data-act="forgot">Pamiršau slaptažodį</button><button class="linkbtn" type="button" data-act="setup">Serverio nustatymai</button></div>
+    </form>
+    <div class="divider"></div>
+    <p class="note">Naujas darbuotojas? Užsiregistruokite – administratorius patvirtins jūsų paskyrą.</p>
+    <button class="btn" type="button" data-act="show-register">Registruotis</button>
+  </section>
+
+  <section id="view-register" class="card-form" hidden>
+    <h2>Registracija</h2>
+    <p class="note">Po registracijos administratorius turi patvirtinti jūsų paskyrą. Kol nepatvirtinta, įrašų nematysite.</p>
+    <form id="register-form" class="stack" novalidate>
+      <label class="field"><span class="lbl">Vardas ir pavardė</span><input id="r-name" autocomplete="name" autocapitalize="words"></label>
+      <label class="field"><span class="lbl">El. paštas</span><input id="r-email" type="email" inputmode="email" autocomplete="email"></label>
+      <label class="field"><span class="lbl">Slaptažodis (min. 6 simboliai)</span><input id="r-pass" type="password" autocomplete="new-password"></label>
+      <label class="field"><span class="lbl">Pakartokite slaptažodį</span><input id="r-pass2" type="password" autocomplete="new-password"></label>
+      <p class="err" id="reg-err" hidden></p>
+      <button class="btn primary" type="submit" id="reg-btn">Registruotis</button>
+      <button class="btn" type="button" data-act="show-login">Jau turiu paskyrą</button>
+    </form>
+  </section>
+
+  <section id="view-pending" class="card-form" hidden>
+    <h2 id="pending-title">Laukiama patvirtinimo</h2>
+    <p id="pending-text"></p>
+    <button class="btn primary" type="button" data-act="pending-check">Tikrinti dar kartą</button>
+    <button class="btn" type="button" data-act="logout">Atsijungti</button>
+  </section>
+
+  <main id="view"></main>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav" hidden>
+  <button data-tab="day"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>Diena</button>
+  <button data-tab="tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></svg>Užduotys</button>
+  <button data-tab="objects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg>Objektai</button>
+  <button data-tab="reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ataskaitos</button>
+</nav>
+<button class="fab" id="fab" hidden></button>
+<div id="sheet-host"></div>
+<div id="menu-host"></div>
+<div id="lb-host"></div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/entries.js"></script>
+<script src="js/objects.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
