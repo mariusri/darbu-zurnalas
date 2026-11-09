@@ -8,8 +8,22 @@
   DZ.actDefaults = o => {
     const list = DZ.objEntries(o.id);
     const tot = DZ.totals(list);
-    const main = tot.filter(m => MAIN_RE.test(m.name) || MAIN_RE.test((DZ.findProduct(m.name) || {}).category || ""));
-    const goods = (main.length ? main : tot).map(m => `${fmtQ(m.qty)} ${m.unit} ${m.name}`).join("\n");
+    const isMain = m => MAIN_RE.test(m.name) || MAIN_RE.test((DZ.findProduct(m.name) || {}).category || "");
+    const isMod = m => /modul/i.test(m.name), isInv = m => /inverter|keitikl/i.test(m.name);
+    const lines = [];
+    // Moduliai ir inverteris – iš objekto kortelės (jei užpildyta), kitos pagrindinės prekės – iš įrašų
+    if (o.module_type) {
+      const q = Number(o.module_count) || tot.filter(isMod).reduce((s, m) => s + m.qty, 0);
+      lines.push(q ? `${fmtQ(q)} vnt. fotomodulių ${o.module_type}` : `Fotomoduliai ${o.module_type}`);
+    }
+    if (o.inverter) {
+      const q = Number(o.inverter_count) || tot.filter(isInv).reduce((s, m) => s + m.qty, 0) || 1;
+      lines.push(`${fmtQ(q)} vnt. inverteris ${o.inverter}`);
+    }
+    const rest = tot.filter(m => !(o.module_type && isMod(m)) && !(o.inverter && isInv(m)));
+    const main = rest.filter(isMain);
+    for (const m of (main.length || lines.length ? main : rest)) lines.push(`${fmtQ(m.qty)} ${m.unit} ${m.name}`);
+    const goods = lines.join("\n");
     const no = o.contract_no || "";
     const desc = (o.power_kw ? `sumontuota ${fmtQ(o.power_kw)} kW galios saulės elektrinė` : "sumontuota saulės elektrinė")
       + (no ? ` bei pateiktos Užsakovo nuosavybėn sutartyje Nr. ${no} nurodytos prekės:` : " bei pateiktos Užsakovo nuosavybėn šios prekės:");
