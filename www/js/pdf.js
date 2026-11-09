@@ -87,8 +87,8 @@
     doc.addFileToVFS("SR-B.ttf", fonts[1]); doc.addFont("SR-B.ttf", "SR", "bold");
     doc.addFileToVFS("SR-I.ttf", fonts[2]); doc.addFont("SR-I.ttf", "SR", "italic");
     const W = 210, H = 297, ML = 22, MR = 20, CW = W - ML - MR, BOT = H - 18;
-    const FS = 10.5, LH = 5.6;
-    let y = 30;
+    const FS = 10, LH = 5.3;
+    let y = 26;
     const font = (style = "normal", size = FS) => { doc.setFont("SR", style); doc.setFontSize(size); };
     const need = h => { if (y + h > BOT) { doc.addPage(); y = 22; return true; } return false; };
     const center = (s, style, size) => { font(style, size); for (const l of doc.splitTextToSize(s, CW)) { need(LH); doc.text(l, W / 2, y, { align: "center" }); y += size * 0.5; } };
@@ -113,18 +113,19 @@
     const client = (o.client_name || "Užsakovas").toUpperCase();
 
     // Antraštė
-    center("ĮRANGOS PRIĖMIMO – PERDAVIMO NUOSAVYBĖN AKTAS" + (opt.no ? " NR. " + opt.no : ""), "bold", 12.5);
+    center("ĮRANGOS PRIĖMIMO – PERDAVIMO NUOSAVYBĖN AKTAS", "bold", 11.5);
+    if (opt.no) { y += 0.5; center("NR. " + opt.no, "bold", 11.5); }
     y += 3;
     center("Data: " + DZ.shortDate(opt.date), "normal", FS); y += 1;
     if (opt.city) center(opt.city, "normal", FS);
-    y += 10;
+    y += 8;
 
     // Šalys
     const intro = [[coName, "bold"]];
     if (c.director_gen) intro.push([" atstovaujama direktoriaus ", "normal"], [c.director_gen, "bold"]);
     intro.push([" (toliau – Vykdytojas)" + (c.code ? ", įmonės kodas " + c.code : "") + ", ir ", "normal"], [client, "bold"], [", (toliau – Užsakovas), pasirašydami šį aktą patvirtina, kad:", "normal"]);
     rich(intro);
-    y += 8;
+    y += 6;
 
     // Paslaugos
     para("Vykdytojas Užsakovui suteikė šias paslaugas:", "italic"); y += 1.5;
@@ -148,15 +149,15 @@
     para("Šiuo aktu tvirtinama, kad visa įranga nauja ir nenaudota, darbai atlikti kokybiškai ir laiku.");
     y += 1.5;
     para("Šis aktas sudarytas dviem vienodą juridinę galią turinčiais egzemplioriais – po vieną kiekvienai iš Šalių.");
-    y += 10;
+    y += 8;
 
     // Rekvizitai ir parašai
     const left = [coName, c.address, c.iban ? "Ats. sąsk. " + c.iban : "", c.bank, c.code ? "Įmonės kodas " + c.code : "", c.vat ? "PVM mokėtojo kodas " + c.vat : "", c.phone ? "Tel. " + c.phone : "", c.email, c.director ? "Direktorius: " + c.director : ""].filter(Boolean);
     const right = [client, o.address, o.client_email ? "El.p.: " + o.client_email : "", o.client_phone ? "Tel. " + o.client_phone : ""].filter(Boolean);
-    const RX = ML + 92, COLW = 82, RLH = 7;
+    const RX = ML + 92, COLW = 82, RLH = 7.2;
     font("normal");
     const colH = lines => lines.reduce((h, l) => h + doc.splitTextToSize(l, COLW).length * (RLH - 1.5) + 1.5, 0);
-    need(Math.max(colH(left), colH(right)) + 40);
+    need(Math.max(colH(left), colH(right)) + 24);
     const top = y;
     font("normal"); doc.text("VYKDYTOJAS", ML + COLW / 2 - 10, y, { align: "center" }); doc.text("UŽSAKOVAS", RX, y);
     const col = (lines, x) => { let yy = top + 9; font("normal"); for (const l of lines) { const ls = doc.splitTextToSize(l, COLW); doc.text(ls, x, yy); yy += ls.length * (RLH - 1.5) + 1.5; } return yy; };
