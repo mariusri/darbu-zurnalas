@@ -113,8 +113,8 @@
     const client = (o.client_name || "Užsakovas").toUpperCase();
 
     // Antraštė
-    center("ĮRANGOS PRIĖMIMO – PERDAVIMO NUOSAVYBĖN AKTAS", "bold", 11.5);
-    if (opt.no) { y += 0.5; center("NR. " + opt.no, "bold", 11.5); }
+    center("ĮRANGOS PRIĖMIMO – PERDAVIMO NUOSAVYBĖN", "bold", 11.5);
+    y += 0.5; center("AKTAS" + (opt.no ? " NR. " + opt.no : ""), "bold", 11.5);
     y += 3;
     center("Data: " + DZ.shortDate(opt.date), "normal", FS); y += 1;
     if (opt.city) center(opt.city, "normal", FS);
