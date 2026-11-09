@@ -336,7 +336,7 @@ jobs:
           test -n "$F" || { echo "Nerasta Supabase biblioteka"; exit 1; }
           cp "$F" www/vendor/supabase.js
           cp node_modules/jspdf/dist/jspdf.umd.min.js www/vendor/
-          cp node_modules/dejavu-fonts-ttf/ttf/DejaVuSans.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf www/vendor/
+          cp node_modules/dejavu-fonts-ttf/ttf/DejaVuSans.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif-Bold.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif-Italic.ttf www/vendor/
           ls -la www/vendor
 
       - name: Paruošti svetainę
