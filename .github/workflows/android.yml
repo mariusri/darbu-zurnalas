@@ -338,6 +338,8 @@ jobs:
           cp node_modules/jspdf/dist/jspdf.umd.min.js www/vendor/
           cp node_modules/dejavu-fonts-ttf/ttf/DejaVuSans.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif-Bold.ttf node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif-Italic.ttf www/vendor/
           ls -la www/vendor
+          sed -i -E 's/(src="(js\/[a-z]+|config)\.js)"/\1?v=${{ github.run_number }}"/g; s/href="style\.css"/href="style.css?v=${{ github.run_number }}"/' www/index.html
+          grep -c 'v=${{ github.run_number }}' www/index.html
 
       - name: Paruošti svetainę
         uses: actions/upload-pages-artifact@v3
