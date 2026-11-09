@@ -1,0 +1,140 @@
+--- a/www/app.js
++++ b/www/app.js
+@@ -41,21 +41,70 @@
+ 
+-  // ---------- Nuotraukų nuorodos (privatus bucket → pasirašytos nuorodos) ----------
+-  const urlCache = new Map(); // path -> {url, exp}
++  // ---------- Nuotraukos: Google Drive (gd:...) ir senos Supabase saugyklos ----------
++  const isDrive = p => String(p).startsWith("gd:");
++  let fnBase = "", fnKey = "";
++  const urlCache = new Map(); // "kelias@dydis" -> {url, exp}
++  const pending = new Set();
+   let hydrating = false;
+-  function cachedUrl(p) { const c = urlCache.get(p); return c && c.exp > Date.now() ? c.url : ""; }
++  const keyOf = (p, size) => p + "@" + (size || "");
++  function cachedUrl(k) { const c = urlCache.get(k); return c && c.exp > Date.now() ? c.url : ""; }
++  async function authHeaders() {
++    const { data } = await sb.auth.getSession();
++    return { Authorization: "Bearer " + (data.session ? data.session.access_token : ""), apikey: fnKey };
++  }
++  function applyPhotos() {
++    for (const img of document.querySelectorAll("img[data-path]")) {
++      const u = cachedUrl(keyOf(img.dataset.path, img.dataset.size));
++      if (u && img.getAttribute("src") !== u) img.src = u;
++    }
++  }
++  async function loadDrivePhoto(p, size) {
++    const k = keyOf(p, size);
++    pending.add(k);
++    try {
++      const r = await fetch(fnBase + "?id=" + encodeURIComponent(p.slice(3)) + "&size=" + encodeURIComponent(size || ""), { headers: await authHeaders() });
++      if (!r.ok) throw new Error("HTTP " + r.status);
++      const url = URL.createObjectURL(await r.blob());
++      urlCache.set(k, { url, exp: Infinity });
++    } catch (_) {
++      urlCache.set(k, { url: "", exp: Date.now() + 30000 });
++    }
++    pending.delete(k);
++    applyPhotos();
++  }
+   async function hydratePhotos() {
+-    if (!sb || hydrating) return;
+-    const imgs = [...document.querySelectorAll("img[data-path]")];
+-    for (const img of imgs) { const u = cachedUrl(img.dataset.path); if (u && img.getAttribute("src") !== u) img.src = u; }
+-    const need = [...new Set(imgs.filter(i => !cachedUrl(i.dataset.path)).map(i => i.dataset.path))];
+-    if (!need.length) return;
++    if (!sb) return;
++    applyPhotos();
++    const want = new Map();
++    for (const img of document.querySelectorAll("img[data-path]")) {
++      const p = img.dataset.path, sz = img.dataset.size || "", k = keyOf(p, sz);
++      if (!urlCache.has(k) || (urlCache.get(k).exp <= Date.now())) if (!pending.has(k)) want.set(k, { p, sz });
++    }
++    const drive = [...want.values()].filter(v => isDrive(v.p));
++    const store = [...want.values()].filter(v => !isDrive(v.p));
++    let i = 0;
++    const worker = async () => { while (i < drive.length) { const v = drive[i++]; await loadDrivePhoto(v.p, v.sz); } };
++    Promise.all([worker(), worker(), worker(), worker()]);
++    if (!store.length || hydrating) return;
+     hydrating = true;
+     try {
+-      const { data, error } = await sb.storage.from(BUCKET).createSignedUrls(need, 60 * 60 * 24);
+-      if (!error && data) for (const r of data) if (r.signedUrl) urlCache.set(r.path, { url: r.signedUrl, exp: Date.now() + 23 * 3600 * 1000 });
++      const { data, error } = await sb.storage.from(BUCKET).createSignedUrls([...new Set(store.map(v => v.p))], 60 * 60 * 24);
++      if (!error && data) for (const r of data) if (r.signedUrl) for (const v of store) if (v.p === r.path) urlCache.set(keyOf(v.p, v.sz), { url: r.signedUrl, exp: Date.now() + 23 * 3600 * 1000 });
+     } catch (_) {}
+     hydrating = false;
+-    for (const img of document.querySelectorAll("img[data-path]")) { const u = cachedUrl(img.dataset.path); if (u && img.getAttribute("src") !== u) img.src = u; }
++    applyPhotos();
++  }
++  async function uploadPhoto(blob, date, object) {
++    const r = await fetch(fnBase + "?date=" + encodeURIComponent(date) + "&object=" + encodeURIComponent(object || ""), {
++      method: "POST", headers: { ...(await authHeaders()), "Content-Type": "image/jpeg" }, body: blob
++    });
++    const j = await r.json().catch(() => ({}));
++    if (!r.ok || !j.id) throw new Error(j.error || ("HTTP " + r.status));
++    return "gd:" + j.id;
++  }
++  async function removePhotos(list) {
++    const drive = list.filter(isDrive).map(p => p.slice(3)), store = list.filter(p => !isDrive(p));
++    try { if (store.length) await sb.storage.from(BUCKET).remove(store); } catch (_) {}
++    try { if (drive.length) await fetch(fnBase, { method: "DELETE", headers: { ...(await authHeaders()), "Content-Type": "application/json" }, body: JSON.stringify({ ids: drive }) }); } catch (_) {}
+   }
+-  const imgTag = (p, extra = "") => `<img data-path="${esc(p)}" ${cachedUrl(p) ? `src="${esc(cachedUrl(p))}"` : ""} alt="" ${extra}>`;
++  const imgTag = (p, extra = "", size = "400") => { const u = cachedUrl(keyOf(p, size)); return `<img data-path="${esc(p)}" data-size="${size}" ${u ? `src="${esc(u)}"` : ""} alt="" ${extra}>`; };
+ 
+@@ -429,9 +478,7 @@
+         const blob = await shrink(j.f);
+-        const path = state.user.id + "/" + (myEd.data.date || state.date) + "/" + uuid() + ".jpg";
+-        const { error } = await sb.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg", upsert: false });
+-        if (error) throw error;
+-        if (ed !== myEd) { sb.storage.from(BUCKET).remove([path]); continue; }
++        const path = await uploadPhoto(blob, myEd.data.date || state.date, myEd.data.object);
++        if (ed !== myEd) { removePhotos([path]); continue; }
+         ed.data.photos.push(path); ed.newPhotos.add(path); ed.previews.set(path, j.preview);
+       } catch (e) {
+-        if (ed === myEd) ed.error = "Nepavyko įkelti nuotraukos. Patikrinkite internetą ir bandykite dar kartą.";
++        if (ed === myEd) ed.error = "Nepavyko įkelti nuotraukos į Google Drive (" + (e && e.message ? e.message : "klaida") + "). Patikrinkite internetą ir bandykite dar kartą.";
+       }
+@@ -444,3 +491,3 @@
+     closeSheet(); render();
+-    if (orphan.length) { try { await sb.storage.from(BUCKET).remove(orphan); } catch (_) {} }
++    if (orphan.length) await removePhotos(orphan);
+   }
+@@ -468,3 +515,3 @@
+       closeSheet();
+-      if (removed.length) sb.storage.from(BUCKET).remove(removed).catch(() => {});
++      if (removed.length) removePhotos(removed);
+       await loadEntries();
+@@ -489,3 +536,3 @@
+     if (!data || !data.length) { $("#sync").textContent = "ištrinti nebegalima"; await loadEntries(); return; }
+-    if (e && e.photos && e.photos.length) sb.storage.from(BUCKET).remove(e.photos).catch(() => {});
++    if (e && e.photos && e.photos.length) removePhotos(e.photos);
+     await loadEntries();
+@@ -498,3 +545,3 @@
+     const n = lb.photos.length;
+-    $("#lb-host").innerHTML = `<div class="lb" id="lb">${imgTag(lb.photos[lb.i])}
++    $("#lb-host").innerHTML = `<div class="lb" id="lb">${imgTag(lb.photos[lb.i], "", "1600")}
+       <button class="close" data-act="lbx" aria-label="Uždaryti">×</button>
+@@ -537,3 +584,3 @@
+       ed.data.photos = ed.data.photos.filter(x => x !== p);
+-      if (ed.newPhotos.has(p)) { ed.newPhotos.delete(p); sb.storage.from(BUCKET).remove([p]).catch(() => {}); } else ed.removed.add(p);
++      if (ed.newPhotos.has(p)) { ed.newPhotos.delete(p); removePhotos([p]); } else ed.removed.add(p);
+       drawEditor();
+@@ -641,2 +688,3 @@
+       sb = window.supabase.createClient(c.url, c.key, { auth: { persistSession: true, autoRefreshToken: true } });
++      fnBase = c.url.replace(/\/+$/, "") + "/functions/v1/drive-photo"; fnKey = c.key;
+     } catch (e) { openSetup(); $("#setup-err").hidden = false; $("#setup-err").textContent = "Netinkami serverio duomenys."; return; }
+--- a/www/config.js
++++ b/www/config.js
+@@ -1,6 +1,6 @@
+-// Čia galite iš anksto įrašyti Supabase duomenis (Project Settings → API).
+-// Jei paliksite tuščius, programėlė jų paklaus pirmą kartą ją atidarius.
++// Supabase duomenys (viešas raktas – saugu laikyti programėlėje).
++// Juos galima pakeisti programėlėje: meniu ⋯ → Serverio nustatymai.
+ window.APP_CONFIG = {
+-  SUPABASE_URL: "",
+-  SUPABASE_KEY: ""
++  SUPABASE_URL: "https://fzrqlqhzqvatpthyflta.supabase.co",
++  SUPABASE_KEY: "sb_publishable_A3NdwtujO7HsnCL5RO7syw_dYIeDRYk"
+ };
