@@ -242,3 +242,4 @@ table.info a { color: var(--steel); }
 .top { flex-wrap: nowrap; }
 .brand { min-width: 0; flex-direction: column; align-items: flex-start; gap: 0; }
 .brand h1 { font-size: 1.5rem; line-height: 1.1; white-space: nowrap; }
+.row-q { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }
