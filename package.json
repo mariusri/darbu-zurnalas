@@ -1,0 +1,17 @@
+{
+  "name": "darbu-zurnalas",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Darbų žurnalas – kasdieniai darbai, žmonės, medžiagos ir nuotraukos",
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "jspdf": "2.5.2",
+    "dejavu-fonts-ttf": "2.37.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}
