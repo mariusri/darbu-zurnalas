@@ -15,6 +15,7 @@
       ${DZ.isAdmin() ? `<button data-act="menu-go" data-v="users">Vartotojai ir rolės${waiting ? ` <span class="badge">${waiting}</span>` : ""}</button>` : ""}
       ${DZ.isLead() ? `<button data-act="crew">Darbuotojų sąrašas</button><button data-act="menu-go" data-v="catalog">Prekių katalogas</button>` : ""}
       ${DZ.isAdmin() ? `<button data-act="menu-go" data-v="settings">Įmonės nustatymai</button>` : ""}
+      <button data-act="profile-edit">Mano profilis</button>
       <button data-act="pw-change">Keisti slaptažodį</button>
       <button data-act="refresh">Atnaujinti duomenis</button>
       <button data-act="logout">Atsijungti</button>
@@ -25,6 +26,30 @@
   DZ.actions["menu-go"] = t => { DZ.closeMenu(); if (t.dataset.v === "users") DZ.loadProfiles().then(() => DZ.render()); DZ.go(t.dataset.v); };
   DZ.actions["refresh"] = () => { DZ.closeMenu(); S.syncErrors = []; DZ.loadCrew(); DZ.loadProfiles(); DZ.loadAll(); };
   DZ.actions["clear-errors"] = () => { S.syncErrors = []; DZ.render(); };
+
+  // ---------- Mano profilis (vardas) ----------
+  DZ.actions["profile-edit"] = () => {
+    DZ.closeMenu();
+    const p = S.profile || {};
+    DZ.openSheet(`<h2>Mano profilis</h2>
+      <p class="note">${esc(S.user ? S.user.email : "")} · ${esc(DZ.ROLES[p.role] || "")}</p>
+      <label class="field"><span class="lbl">Vardas (ir pavardė)</span><input id="me-name" value="${esc(p.name || "")}" autocomplete="name" autocapitalize="words"></label>
+      <p class="note">Šis vardas rodomas įrašuose, užduotyse („Mano“) ir kaip atsakingas asmuo. Jis turi sutapti su vardu darbuotojų sąraše.</p>
+      <p class="err" id="me-err" hidden></p>
+      <div class="sheet-actions"><button type="button" class="btn" data-act="close">Atšaukti</button><button type="submit" class="btn primary">Išsaugoti</button></div>`, { form: true, id: "me-form" });
+    $("#me-form").addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const name = $("#me-name").value.trim().replace(/\s+/g, " "), err = $("#me-err");
+      if (name.length < 2) { err.hidden = false; err.textContent = "Įrašykite vardą."; return; }
+      const btn = $("#me-form button[type=submit]"); btn.disabled = true;
+      const { error } = await DZ.sb.rpc("set_my_name", { new_name: name });
+      if (error) { btn.disabled = false; err.hidden = false; err.textContent = (DZ.isNetErr(error) ? "Nėra ryšio. " : "Nepavyko: ") + error.message; return; }
+      if (S.profile) S.profile.name = name;
+      const me = S.profiles.find(x => S.profile && x.id === S.profile.id); if (me) me.name = name;
+      DZ.closeSheet(true); DZ.toast("Vardas pakeistas"); DZ.render();
+    });
+    setTimeout(() => { const i = $("#me-name"); i.focus(); i.select(); }, 50);
+  };
 
   // ---------- Slaptažodžio keitimas ----------
   DZ.actions["pw-change"] = () => {
