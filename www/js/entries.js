@@ -363,6 +363,7 @@
     DZ.hydratePhotos();
   };
   DZ.closeLb = () => { lb = null; DZ.drawLb(); };
+  DZ.openLb = (photos, i) => { lb = { photos, i: i || 0 }; DZ.drawLb(); };
   DZ.actions["photo"] = t => { const e = S.entries.find(x => x.id === t.dataset.id); if (!e) return; lb = { photos: e.photos, i: +t.dataset.i }; DZ.drawLb(); };
   DZ.actions["lb-x"] = () => DZ.closeLb();
   DZ.actions["lb-p"] = () => { lb.i = (lb.i - 1 + lb.photos.length) % lb.photos.length; DZ.drawLb(); };
