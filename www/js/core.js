@@ -11,7 +11,7 @@
   DZ.UNITS = ["vnt.","m","kompl.","kg","l","m²","pak.","val."];
   DZ.BASE_MATS = ["Saulės modulis","Inverteris","Montavimo bėgis","Bėgių jungtis","Gnybtas (vidurinis)","Gnybtas (galinis)","Stogo kablys","Solarinis kabelis 6 mm²","Solarinis kabelis 4 mm²","MC4 jungtis","Kabelių kanalas","Apsaugos skydelis","DC kirtiklis","Viršįtampių ribotuvas","Įžeminimo laidas","Kabelių sąvaržos"];
   DZ.ROLES = { admin: "Administratorius", brigadininkas: "Brigadininkas", darbuotojas: "Darbuotojas" };
-  DZ.OBJ_STATUS = { pasiulymas: "Pasiūlymas", sutartis: "Sutartis", montavimas: "Montavimas", prijungimas: "Prijungimas", aptarnavimas: "Aptarnavimas", baigta: "Baigta" };
+  DZ.OBJ_STATUS = { uzklausa: "Užklausa", pasiulymas: "Pasiūlymas", sutartis: "Sutartis", montavimas: "Montavimas", prijungimas: "Prijungimas", aptarnavimas: "Aptarnavimas", baigta: "Baigta", atsaukta: "Atšaukta" };
   DZ.TASK_STATUS = { planuota: "Planuota", vykdoma: "Vykdoma", atlikta: "Atlikta" };
   const BUCKET = "photos";
 
@@ -372,7 +372,7 @@
   };
 
   // ---------- Atvaizdavimas ----------
-  const TAB_OF = { day: "day", search: "day", tasks: "tasks", objects: "objects", object: "objects", reports: "reports", users: "", catalog: "", settings: "" };
+  const TAB_OF = { crm: "crm", day: "day", search: "day", tasks: "tasks", objects: "objects", object: "objects", reports: "reports", users: "", catalog: "", settings: "" };
   DZ.go = (view, extra) => { Object.assign(state, extra || {}); state.view = view; window.scrollTo(0, 0); DZ.render(); };
   DZ.render = () => {
     const app = state.screen === "app";
@@ -389,8 +389,9 @@
     // Paprastas darbuotojas mato tik dienos įrašus (su paieška) ir savo užduotis
     const lead = DZ.isLead();
     if (!lead && !["day", "search", "tasks"].includes(state.view)) state.view = "day";
+    if (state.view === "crm" && !DZ.isAdmin()) state.view = "day";
     const tab = TAB_OF[state.view];
-    for (const btn of document.querySelectorAll("#bottom-nav button")) { btn.hidden = !lead && !["day", "tasks"].includes(btn.dataset.tab); btn.setAttribute("aria-current", btn.dataset.tab === tab ? "page" : "false"); }
+    for (const btn of document.querySelectorAll("#bottom-nav button")) { btn.hidden = (!lead && !["day", "tasks"].includes(btn.dataset.tab)) || (btn.dataset.tab === "crm" && !DZ.isAdmin()); btn.setAttribute("aria-current", btn.dataset.tab === tab ? "page" : "false"); }
     const v = DZ.views[state.view] || DZ.views.day;
     host.innerHTML = v.html();
     const fab = v.fab ? v.fab() : null;
