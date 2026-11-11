@@ -386,8 +386,11 @@
     if (app && state.syncErrors.length) msgs.push(state.syncErrors.slice(-3).join(" · ") + ` <button class="linkbtn" data-act="clear-errors">Gerai</button>`);
     b.hidden = !msgs.length; b.innerHTML = msgs.map(m => `<div>${m.includes("<button") ? m : esc(m)}</div>`).join("");
     if (!app) { host.innerHTML = ""; $("#fab").hidden = true; return; }
+    // Paprastas darbuotojas mato tik dienos įrašus (su paieška) ir savo užduotis
+    const lead = DZ.isLead();
+    if (!lead && !["day", "search", "tasks"].includes(state.view)) state.view = "day";
     const tab = TAB_OF[state.view];
-    for (const btn of document.querySelectorAll("#bottom-nav button")) btn.setAttribute("aria-current", btn.dataset.tab === tab ? "page" : "false");
+    for (const btn of document.querySelectorAll("#bottom-nav button")) { btn.hidden = !lead && !["day", "tasks"].includes(btn.dataset.tab); btn.setAttribute("aria-current", btn.dataset.tab === tab ? "page" : "false"); }
     const v = DZ.views[state.view] || DZ.views.day;
     host.innerHTML = v.html();
     const fab = v.fab ? v.fab() : null;
