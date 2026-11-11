@@ -312,3 +312,17 @@ table.info a { color: var(--steel); }
 .pill.ws-isspresta { background: #dcefe0; border-color: #a9d3b3; color: #1f5c2d; }
 .w-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; }
 #sms-text { min-height: 120px; }
+/* Rytinio vaizdo antraštė ir etapų plytelės */
+.crm-head { display: flex; flex-direction: column; gap: 2px; }
+.crm-head h2 { font-size: 1.6rem; font-weight: 600; line-height: 1.15; }
+.crm-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .crm-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.crm-tile { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-align: left; min-width: 0; }
+.crm-tile b { font-family: var(--f-display); font-size: 1.45rem; flex: none; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.crm-tile span { font-size: .85rem; font-weight: 600; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crm-tile.warn b { color: var(--danger); }
+.crm-tile[aria-pressed="true"] { background: var(--steel); border-color: var(--steel); color: var(--surface); }
+.crm-tile[aria-pressed="true"] span, .crm-tile[aria-pressed="true"] b { color: var(--surface); }
+.crm-more { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-top: -6px; }
+.crm-more .linkbtn { font-size: .88rem; }
+.crm-more .linkbtn[aria-pressed="true"] { font-weight: 700; text-decoration: underline; }
