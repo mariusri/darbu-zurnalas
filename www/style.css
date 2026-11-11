@@ -243,3 +243,31 @@ table.info a { color: var(--steel); }
 .brand { min-width: 0; flex-direction: column; align-items: flex-start; gap: 0; }
 .brand h1 { font-size: 1.5rem; line-height: 1.1; white-space: nowrap; }
 .row-q { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }
+/* Kalendorius ir dokumentai */
+:root { --k-offer: #3b6fb6; --k-install: #e08a00; --k-work: #c9a227; --k-done: #2f8a45; }
+@media (prefers-color-scheme: dark) { :root { --k-offer: #6f9ee0; --k-install: #f0a43a; --k-work: #d8b84a; --k-done: #5cb874; } }
+.row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.cal-wd { text-align: center; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 2px 0; }
+.cal-cell { position: relative; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; min-height: 52px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cal-cell.empty { border: 0; background: none; }
+.cal-cell b { font-family: var(--f-display); font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.cal-cell.today b { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.cal-cell[aria-current="date"] { border-color: var(--steel); box-shadow: inset 0 0 0 1.5px var(--steel); }
+.cal-bars { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 0 2px; }
+.cal-bars i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.cal-cell small { position: absolute; top: 2px; right: 4px; font-family: var(--f-mono); font-size: .62rem; color: var(--muted); }
+.chip-btn.kind { display: inline-flex; align-items: center; gap: 6px; }
+.chip-btn.kind i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.chip-btn.kind[aria-pressed="false"] { opacity: .5; }
+.chip-btn.kind[aria-pressed="true"] { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+.obj-card.ev { border-left: 5px solid var(--line); }
+.pill.kind { background: var(--surface); color: var(--ink); border-width: 1.5px; }
+.thumbs.docs { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.th.doc { aspect-ratio: auto; background: none; display: flex; flex-direction: column; gap: 4px; }
+.th.doc > button:first-child { aspect-ratio: 3 / 4; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; padding: 0; background: var(--line); }
+.doc-l { font-size: .75rem; color: var(--muted); line-height: 1.25; }
+.doc-up { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.doc-up select { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; }
+.doc-up label { position: relative; overflow: hidden; }
+.doc-up input { position: absolute; inset: 0; opacity: 0; }
