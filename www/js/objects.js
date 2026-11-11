@@ -22,7 +22,7 @@
       if (f.mode === "cal" && DZ.isAdmin() && DZ.calendarHtml) return DZ.calendarHtml();
       const words = DZ.norm(f.text).split(/\s+/).filter(Boolean);
       const list = S.objects.filter(o => {
-        if (f.status === "aktyvus" && o.status === "baigta") return false;
+        if (f.status === "aktyvus" && (o.status === "baigta" || o.status === "atsaukta")) return false;
         if (f.status !== "aktyvus" && f.status !== "visi" && o.status !== f.status) return false;
         const hay = DZ.norm([o.name, o.address, o.client_name, o.client_phone, o.inverter].join(" "));
         return words.every(w => hay.includes(w));
@@ -84,6 +84,7 @@
             <button class="btn primary" data-act="pdf-open" data-id="${esc(o.id)}">PDF aktas</button>
           </div>
         </div>
+        ${DZ.objCrmHtml ? DZ.objCrmHtml(o) : ""}
         ${DZ.objDocsHtml ? DZ.objDocsHtml(o) : ""}
         <div class="card">
           <div class="stats">
