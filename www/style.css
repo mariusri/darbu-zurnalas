@@ -295,3 +295,14 @@ table.info a { color: var(--steel); }
 .crm-next-box { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border-left: 3px solid var(--steel); margin-bottom: 8px; }
 .crm-next-box.late { border-left-color: var(--danger); }
 .crm-next-box.late .meta { color: var(--danger); }
+/* Apmokėjimai */
+.pay-stats { gap: 14px; margin: 6px 0 4px; }
+.pay-stats b { font-size: 1.15rem; }
+.pay-stats .neg b { color: var(--danger); }
+.pay-stats .pos b { color: #2f7a3e; }
+.pay-late { color: var(--danger); font-weight: 700; margin: 4px 0; }
+.pay-table tr.clickable { cursor: pointer; }
+.pay-table tr.paid td.q { color: #2f7a3e; }
+.pay-row.late { border-left: 4px solid var(--danger); }
+.pay-row .q { font-variant-numeric: tabular-nums; }
+.row-end.tight { gap: 6px; }
