@@ -5,7 +5,8 @@
   let mine = DZ.lsGet("tasks_mine") === "1";
 
   const isMineTask = t => (t.assignees || []).some(DZ.isMe);
-  const visible = () => S.tasks.filter(t => !mine || isMineTask(t));
+  // Darbuotojas mato tik jam paskirtas užduotis
+  const visible = () => S.tasks.filter(t => (DZ.isLead() && !mine) || isMineTask(t));
 
   function taskHtml(t, showDate) {
     const oname = t.object_id ? DZ.objName(t.object_id) : "";
@@ -15,7 +16,7 @@
         <span class="t-time">${showDate ? esc(DZ.shortDate(t.date)) + " " : ""}${esc(t.time || "")}</span>
         <h3>${esc(t.title || "Užduotis")}</h3>
       </div>
-      ${oname ? `<button class="linkbtn" data-act="obj-open" data-id="${esc(t.object_id)}">📍 ${esc(oname)}</button>` : ""}
+      ${oname ? (DZ.isLead() ? `<button class="linkbtn" data-act="obj-open" data-id="${esc(t.object_id)}">📍 ${esc(oname)}</button>` : `<span class="note">📍 ${esc(oname)}</span>`) : ""}
       ${t.description ? `<p class="work">${esc(t.description)}</p>` : ""}
       ${(t.assignees || []).length ? `<div class="chips">${t.assignees.map(n => `<span class="chip${DZ.isMe(n) ? " me" : ""}">${esc(n)}</span>`).join("")}</div>` : ""}
       <div class="seg" role="group" aria-label="Būsena">${Object.entries(DZ.TASK_STATUS).map(([k, v]) => `<button data-act="task-status" data-id="${esc(t.id)}" data-v="${k}" aria-pressed="${t.status === k}">${v}</button>`).join("")}</div>
@@ -36,9 +37,9 @@
       const upcoming = list.filter(t => t.status !== "atlikta" && t.date > S.taskDate).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "")).slice(0, 8);
       return `<section class="stack16">
         <div class="view-head"><h2>Užduotys</h2>
-          <div class="seg small" role="group"><button data-act="task-mine" data-v="0" aria-pressed="${!mine}">Visos</button><button data-act="task-mine" data-v="1" aria-pressed="${mine}">Mano</button></div>
+          ${DZ.isLead() ? `<div class="seg small" role="group"><button data-act="task-mine" data-v="0" aria-pressed="${!mine}">Visos</button><button data-act="task-mine" data-v="1" aria-pressed="${mine}">Mano</button></div>` : ""}
         </div>
-        ${mine && !DZ.myName() ? `<p class="note">Jūsų vardas profilyje nenurodytas, todėl „Mano“ negali rasti užduočių.</p>` : ""}
+        ${(mine || !DZ.isLead()) && !DZ.myName() ? `<p class="note">Jūsų vardas profilyje nenurodytas, todėl „Mano“ negali rasti užduočių.</p>` : ""}
         ${late.length ? `<details class="card warn" ${late.length < 4 ? "open" : ""}><summary><b>Vėluoja: ${late.length}</b></summary><div class="stack">${late.map(t => taskHtml(t, true)).join("")}</div></details>` : ""}
         ${DZ.weekStrip(S.taskDate, marks, "task")}
         <div class="day-title"><h2>${S.taskDate === DZ.today() ? "Šiandien, " : ""}${esc(DZ.longDate(S.taskDate))}</h2><span class="meta">${day.length ? day.length + " užd." : ""}</span></div>
