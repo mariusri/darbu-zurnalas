@@ -61,7 +61,9 @@
       const rows = S.crm.map(c => ({ c, o: objs.get(c.object_id) })).filter(x => x.o);
       const t = DZ.today(), wk = DZ.addDays(t, 7);
       const count = s => rows.filter(x => x.c.stage === s).length;
-      const chips = `<div class="chips">${Object.entries(DZ.STAGES).map(([k, l]) => `<button class="chip-btn stg" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}">${esc(l)} · ${count(k)}</button>`).join("")}${DZ.payUnpaid ? `<button class="chip-btn stg" data-act="crm-stage" data-v="neapmoketa" aria-pressed="${v.stage === "neapmoketa"}">Neapmokėta · ${DZ.payUnpaid().length}</button>` : ""}${DZ.warrantyOpen ? `<button class="chip-btn stg" data-act="crm-stage" data-v="garantija" aria-pressed="${v.stage === "garantija"}">Garantija · ${DZ.warrantyOpen().length}</button>` : ""}</div>`;
+      const tile = (k, l, n, warn) => `<button class="crm-tile${warn && n ? " warn" : ""}" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}"><b>${n}</b><span>${esc(l)}</span></button>`;
+      const chips = `<div class="crm-tiles">${ACTIVE.map(k => tile(k, DZ.STAGES[k], count(k))).join("")}${DZ.payUnpaid ? tile("neapmoketa", "Neapmokėta", DZ.payUnpaid().length, true) : ""}${DZ.warrantyOpen ? tile("garantija", "Garantija", DZ.warrantyOpen().length, true) : ""}</div>
+        <div class="crm-more">${["uzbaigta", "atsaukta"].map(k => `<button class="linkbtn" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}">${esc(DZ.STAGES[k])} · ${count(k)}</button>`).join("")}${v.stage ? `<button class="linkbtn" data-act="crm-stage" data-v="">‹ Šiandienos darbai</button>` : ""}</div>`;
       let body;
       if (v.stage === "neapmoketa" && DZ.payListHtml) body = DZ.payListHtml();
       else if (v.stage === "garantija" && DZ.warrantyListHtml) body = DZ.warrantyListHtml();
@@ -82,8 +84,8 @@
           : `<div class="empty"><strong>Šiandien darbų nėra</strong><span>${rows.length ? "Visi veiksmai suplanuoti vėlesnėms dienoms." : "Naują užklausą įveskite mygtuku „+ Užklausa“, o esamą objektą įtraukite jo kortelėje (skiltis „Etapas“)."}</span></div>`;
       }
       return `<section class="stack16">
-        <div class="view-head"><h2>Šiandien</h2><span class="meta">${esc(DZ.longDate(t))}</span></div>
-        <div class="card">${chips}${v.stage ? `<button class="linkbtn" data-act="crm-stage" data-v="">‹ Rodyti šiandienos darbus</button>` : ""}</div>
+        <div class="crm-head"><h2>${v.stage ? esc(DZ.STAGES[v.stage] || { neapmoketa: "Neapmokėta", garantija: "Garantija" }[v.stage] || "") : "Šiandien"}</h2><span class="meta">${esc(DZ.longDate(t))}</span></div>
+        ${chips}
         ${body}
       </section>`;
     }
