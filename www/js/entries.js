@@ -12,7 +12,7 @@
     const oid = DZ.entryObjectId(e);
     return `<article class="entry${e._pending ? " pending" : ""}">
       <div class="entry-head">
-        <h3>${opts.showDate ? `<small class="ed">${esc(DZ.shortDate(e.date))}</small>` : ""}${oid && !opts.noObjLink ? `<button class="linkbtn h" data-act="obj-open" data-id="${esc(oid)}">${esc(e.object || "Be pavadinimo")}</button>` : esc(e.object || "Be pavadinimo")}</h3>
+        <h3>${opts.showDate ? `<small class="ed">${esc(DZ.shortDate(e.date))}</small>` : ""}${oid && !opts.noObjLink && DZ.isLead() ? `<button class="linkbtn h" data-act="obj-open" data-id="${esc(oid)}">${esc(e.object || "Be pavadinimo")}</button>` : esc(e.object || "Be pavadinimo")}</h3>
         ${eh ? `<span class="chip">${fmtQ(eh)} val.</span>` : ""}
       </div>
       <div class="entry-body">
@@ -37,7 +37,7 @@
       const today = DZ.today();
       const list = S.entries.filter(e => e.date === S.date).sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0));
       const hrs = list.reduce((t, e) => t + DZ.entryHours(e), 0);
-      const myTasks = S.tasks.filter(t => t.date === S.date && t.status !== "atlikta");
+      const myTasks = S.tasks.filter(t => t.date === S.date && t.status !== "atlikta" && (DZ.isLead() || (t.assignees || []).some(DZ.isMe)));
       let body;
       if (!S.loaded) body = `<p class="status">Kraunami įrašai…</p>`;
       else if (!list.length) body = `<div class="empty"><strong>Šią dieną įrašų nėra</strong><span>Užrašykite objektą, dirbusius žmones, darbus, medžiagas ir įkelkite nuotraukas.</span><button class="btn primary" data-act="entry-new">+ Naujas įrašas</button></div>`;
