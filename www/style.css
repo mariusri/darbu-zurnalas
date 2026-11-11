@@ -274,3 +274,24 @@ table.info a { color: var(--steel); }
 .th.doc > button:first-child { position: relative; }
 .pdf-tag { position: absolute; left: 4px; bottom: 4px; background: var(--danger); color: #fff; font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; letter-spacing: .04em; }
 .bottom-nav { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+/* CRM: etapai, kitas veiksmas, rytinis vaizdas */
+.pill.st-uzklausa, .pill.stg-uzklausa { background: #eef0f3; border-color: #cfd5dc; color: #3d4752; }
+.pill.st-atsaukta, .pill.stg-atsaukta { background: #f6e3e3; border-color: #e3b9b9; color: #7a2c2c; }
+.pill.stg-pasiulymas { background: #e8eef6; border-color: #c9d6e6; color: #2b4a66; }
+.pill.stg-montavimas { background: #ffe0c2; border-color: #f2b27a; color: #7a3a00; }
+.pill.stg-apmokejimas { background: #fff2cc; border-color: #f0d68a; color: #6b4e00; }
+.pill.stg-uzbaigta { background: #dcefe0; border-color: #a9d3b3; color: #1f5c2d; }
+.crm-row { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--steel); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.crm-row.late { border-left-color: var(--danger); }
+.crm-main { background: none; border: 0; padding: 0; text-align: left; color: inherit; display: flex; flex-direction: column; gap: 3px; font: inherit; width: 100%; }
+.crm-next { font-weight: 600; }
+.crm-row.late .meta { color: var(--danger); }
+.crm-acts { display: flex; gap: 8px; justify-content: flex-end; }
+.sec.bad { color: var(--danger); }
+.stage-bar { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.stage-bar button { border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: .82rem; font-weight: 700; padding: 6px 10px; border-radius: 999px; }
+.stage-bar button.past { background: var(--accent-soft); color: var(--steel); }
+.stage-bar button[aria-pressed="true"] { background: var(--steel); border-color: var(--steel); color: var(--surface); }
+.crm-next-box { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border-left: 3px solid var(--steel); margin-bottom: 8px; }
+.crm-next-box.late { border-left-color: var(--danger); }
+.crm-next-box.late .meta { color: var(--danger); }
