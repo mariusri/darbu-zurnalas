@@ -8,7 +8,7 @@
     work: { l: "Darbai", c: "var(--k-work)" },
     done: { l: "Atlikta", c: "var(--k-done)" }
   };
-  DZ.DOC_TYPES = { pasiulymas: "Pasiūlymas", sutartis: "Sutartis", kita: "Kita" };
+  DZ.DOC_TYPES = { pasiulymas: "Pasiūlymas", sutartis: "Sutartis", aktas: "Aktas", kita: "Kita" };
   const cal = { month: DZ.today().slice(0, 7), sel: DZ.today(), show: { offer: true, install: true, work: true, done: true } };
   try { Object.assign(cal.show, JSON.parse(DZ.lsGet("cal_show") || "{}")); } catch (_) {}
 
@@ -94,14 +94,15 @@
   const objDocs = id => S.docs.filter(d => d.object_id === id);
   const isPdf = d => /pdf/i.test(d.mime || "");
   // Įkėlimas į Google Drive su tikru failo tipu (nuotrauka ar PDF)
-  async function uploadFile(blob, mime, name, objName) {
-    const r = await fetch(DZ.fnBase + "?date=" + DZ.today() + "&object=" + encodeURIComponent(objName || "") + "&name=" + encodeURIComponent(name || ""), {
+  async function uploadFile(blob, mime, name, objName, date) {
+    const r = await fetch(DZ.fnBase + "?date=" + (date || DZ.today()) + "&object=" + encodeURIComponent(objName || "") + "&name=" + encodeURIComponent(name || ""), {
       method: "POST", headers: { ...(await DZ.authHeaders()), "Content-Type": mime }, body: blob
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.id) throw new Error(j.error || ("HTTP " + r.status));
     return "gd:" + j.id;
   }
+  DZ.uploadFile = uploadFile;
   DZ.objDocsHtml = o => {
     if (!DZ.isAdmin()) return "";
     const docs = objDocs(o.id);
