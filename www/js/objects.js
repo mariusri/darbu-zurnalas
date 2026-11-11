@@ -85,6 +85,7 @@
           </div>
         </div>
         ${DZ.objCrmHtml ? DZ.objCrmHtml(o) : ""}
+        ${DZ.objPayHtml ? DZ.objPayHtml(o) : ""}
         ${DZ.objDocsHtml ? DZ.objDocsHtml(o) : ""}
         <div class="card">
           <div class="stats">
