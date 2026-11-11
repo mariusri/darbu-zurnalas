@@ -2,7 +2,7 @@
 (function () {
   "use strict";
   const DZ = window.DZ, S = DZ.state, $ = DZ.$, esc = DZ.esc, fmtQ = DZ.fmtQ;
-  const f = { text: "", status: "aktyvus" };
+  const f = { text: "", status: "aktyvus", mode: "list" };
 
   DZ.objEntries = id => S.entries.filter(e => DZ.entryObjectId(e) === id).sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
   DZ.objStats = (list) => {
@@ -19,6 +19,7 @@
   DZ.views.objects = {
     fab: () => ({ label: "+ Objektas", act: "obj-new" }),
     html() {
+      if (f.mode === "cal" && DZ.isAdmin() && DZ.calendarHtml) return DZ.calendarHtml();
       const words = DZ.norm(f.text).split(/\s+/).filter(Boolean);
       const list = S.objects.filter(o => {
         if (f.status === "aktyvus" && o.status === "baigta") return false;
@@ -30,7 +31,7 @@
       for (const e of S.entries) { const id = DZ.entryObjectId(e); if (id && (!lastDate[id] || e.date > lastDate[id])) lastDate[id] = e.date; }
       list.sort((a, b) => (lastDate[b.id] || "").localeCompare(lastDate[a.id] || "") || DZ.byName(a.name, b.name));
       return `<section class="stack16">
-        <div class="view-head"><h2>Objektai</h2><span class="meta">${list.length}</span></div>
+        <div class="view-head"><h2>Objektai</h2><span class="meta">${list.length}</span>${DZ.isAdmin() && DZ.calendarHtml ? `<div class="seg small" role="group"><button data-act="o-mode" data-v="list" aria-pressed="true">Sąrašas</button><button data-act="o-mode" data-v="cal" aria-pressed="false">Kalendorius</button></div>` : ""}</div>
         <div class="card">
           <input id="o-q" type="search" placeholder="Ieškoti: pavadinimas, adresas, klientas" value="${esc(f.text)}" autocomplete="off">
           <div class="chips">${[["aktyvus", "Aktyvūs"], ...Object.entries(DZ.OBJ_STATUS), ["visi", "Visi"]].map(([k, v]) => `<button class="chip-btn" data-act="o-filter" data-v="${k}" aria-pressed="${f.status === k}">${esc(v)}</button>`).join("")}</div>
@@ -44,10 +45,12 @@
     },
     after() {
       let t = null;
+      if (!$("#o-q")) return;
       $("#o-q").addEventListener("input", ev => { clearTimeout(t); t = setTimeout(() => { f.text = ev.target.value; DZ.render(); const i = $("#o-q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); });
     }
   };
   DZ.actions["o-filter"] = t => { f.status = t.dataset.v; DZ.render(); };
+  DZ.actions["o-mode"] = t => { f.mode = t.dataset.v; DZ.render(); };
   DZ.actions["obj-open"] = t => DZ.go("object", { objectId: t.dataset.id });
 
   DZ.views.object = {
@@ -72,6 +75,7 @@
             ${row("Saulės moduliai", [o.module_count ? o.module_count + " vnt." : "", esc(o.module_type)].filter(Boolean).join(" "))}
             ${row("Inverteris", [o.inverter_count ? o.inverter_count + " vnt." : "", esc(o.inverter)].filter(Boolean).join(" "))}
             ${row("Sutartis", [o.contract_no ? "Nr. " + esc(o.contract_no) : "", o.contract_date ? DZ.shortDate(o.contract_date) : "", o.contract_sum ? DZ.money(o.contract_sum) : ""].filter(Boolean).join(" · "))}
+            ${DZ.isAdmin() ? row("Datos", [o.offer_date ? "pasiūlymas " + DZ.shortDate(o.offer_date) : "", o.install_date ? "montavimas " + DZ.shortDate(o.install_date) : "", o.done_date ? "atlikta " + DZ.shortDate(o.done_date) : ""].filter(Boolean).join(" · ")) : ""}
           </tbody></table>
           ${o.notes ? `<p class="work">${esc(o.notes)}</p>` : ""}
           <div class="row-end">
@@ -80,6 +84,7 @@
             <button class="btn primary" data-act="pdf-open" data-id="${esc(o.id)}">PDF aktas</button>
           </div>
         </div>
+        ${DZ.objDocsHtml ? DZ.objDocsHtml(o) : ""}
         <div class="card">
           <div class="stats">
             <div><b>${st.days}</b><span class="lbl">darbo d.</span></div>
@@ -118,6 +123,7 @@
       <div class="row-q">${inp("o-mtype", "Saulės modulių tipas", d.module_type, "text", 'placeholder="pvz. LONGI Solar LR7-54HVH-485M"')}${inp("o-mcount", "Kiekis, vnt.", d.module_count, "number", 'step="1" min="0" inputmode="numeric"')}</div>
       <div class="row-q">${inp("o-inv", "Inverteris", d.inverter, "text", 'placeholder="pvz. SOLIS S6-EH3P10K-H-EU"')}${inp("o-icount", "Kiekis, vnt.", d.inverter_count, "number", 'step="1" min="0" inputmode="numeric"')}</div>
       ${lead || !o ? `${inp("o-cno", "Sutarties Nr. (bus akte)", d.contract_no)}<div class="row2">${inp("o-cdate", "Sutarties data", d.contract_date, "date")}${inp("o-csum", "Sutarties suma, €", d.contract_sum, "number", 'step="any" inputmode="decimal"')}</div>` : ""}
+      ${DZ.isAdmin() ? `<div class="row3">${inp("o-doffer", "Pasiūlymas", d.offer_date, "date")}${inp("o-dinst", "Montavimas", d.install_date, "date")}${inp("o-ddone", "Atlikta", d.done_date, "date")}</div>` : ""}
       <label class="field"><span class="lbl">Būsena</span><select id="o-status">${Object.entries(DZ.OBJ_STATUS).map(([k, v]) => `<option value="${k}" ${k === d.status ? "selected" : ""}>${v}</option>`).join("")}</select></label>
       <label class="field"><span class="lbl">Pastabos</span><textarea id="o-notes">${esc(d.notes)}</textarea></label>
       <p class="err" id="o-err" hidden></p>
@@ -135,6 +141,10 @@
         power_kw: v("o-kw") ? DZ.num(v("o-kw")) : null, module_type: v("o-mtype"), module_count: v("o-mcount") ? Math.round(DZ.num(v("o-mcount"))) : null, inverter: v("o-inv"), inverter_count: v("o-icount") ? Math.round(DZ.num(v("o-icount"))) : null, status: v("o-status"), notes: $("#o-notes").value.trim(), updated_at: new Date().toISOString()
       };
       if ($("#o-cdate")) { row.contract_no = v("o-cno"); row.contract_date = v("o-cdate") || null; row.contract_sum = v("o-csum") ? DZ.num(v("o-csum")) : null; }
+      if ($("#o-doffer")) { row.offer_date = v("o-doffer") || null; row.install_date = v("o-dinst") || null; row.done_date = v("o-ddone") || null; }
+      // Pakeitus būseną – tos dienos data kalendoriui (jei dar neįrašyta)
+      const STAGE = { pasiulymas: "offer_date", montavimas: "install_date", baigta: "done_date" }[row.status];
+      if (STAGE && (!o || o.status !== row.status) && !(STAGE in row ? row[STAGE] : (o && o[STAGE]))) row[STAGE] = DZ.today();
       if (!row.name) { err.hidden = false; err.textContent = "Įrašykite pavadinimą."; return; }
       const dup = DZ.findObject(row.name);
       if (dup && (!o || dup.id !== o.id)) { err.hidden = false; err.textContent = "Objektas tokiu pavadinimu jau yra."; return; }
