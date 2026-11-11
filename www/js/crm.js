@@ -61,9 +61,10 @@
       const rows = S.crm.map(c => ({ c, o: objs.get(c.object_id) })).filter(x => x.o);
       const t = DZ.today(), wk = DZ.addDays(t, 7);
       const count = s => rows.filter(x => x.c.stage === s).length;
-      const chips = `<div class="chips">${Object.entries(DZ.STAGES).map(([k, l]) => `<button class="chip-btn stg" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}">${esc(l)} · ${count(k)}</button>`).join("")}${DZ.payUnpaid ? `<button class="chip-btn stg" data-act="crm-stage" data-v="neapmoketa" aria-pressed="${v.stage === "neapmoketa"}">Neapmokėta · ${DZ.payUnpaid().length}</button>` : ""}</div>`;
+      const chips = `<div class="chips">${Object.entries(DZ.STAGES).map(([k, l]) => `<button class="chip-btn stg" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}">${esc(l)} · ${count(k)}</button>`).join("")}${DZ.payUnpaid ? `<button class="chip-btn stg" data-act="crm-stage" data-v="neapmoketa" aria-pressed="${v.stage === "neapmoketa"}">Neapmokėta · ${DZ.payUnpaid().length}</button>` : ""}${DZ.warrantyOpen ? `<button class="chip-btn stg" data-act="crm-stage" data-v="garantija" aria-pressed="${v.stage === "garantija"}">Garantija · ${DZ.warrantyOpen().length}</button>` : ""}</div>`;
       let body;
       if (v.stage === "neapmoketa" && DZ.payListHtml) body = DZ.payListHtml();
+      else if (v.stage === "garantija" && DZ.warrantyListHtml) body = DZ.warrantyListHtml();
       else if (v.stage) {
         const list = rows.filter(x => x.c.stage === v.stage).sort((a, b) => (a.c.next_due || "9").localeCompare(b.c.next_due || "9") || DZ.byName(a.o.name, b.o.name));
         body = list.length ? `<div class="stack">${list.map(x => crmRow(x.c, x.o)).join("")}</div>` : `<div class="empty"><span>Šiame etape objektų nėra.</span></div>`;
@@ -75,7 +76,7 @@
         const soon = act.filter(x => x.c.next_due > t && x.c.next_due <= wk).sort(by);
         const none = act.filter(x => !x.c.next_due).sort(by);
         const sec = (title, list, cls = "") => list.length ? `<h3 class="sec ${cls}">${title} <span class="meta">${list.length}</span></h3><div class="stack">${list.map(x => crmRow(x.c, x.o)).join("")}</div>` : "";
-        const payLate = DZ.payLateHtml ? DZ.payLateHtml() : "";
+        const payLate = (DZ.payLateHtml ? DZ.payLateHtml() : "") + (DZ.warrantyTodayHtml ? DZ.warrantyTodayHtml() : "");
         body = !S.loaded ? `<p class="status">Kraunama…</p>` : (payLate || late.length || today.length || soon.length || none.length)
           ? payLate + sec("Vėluoja", late, "bad") + sec("Šiandien", today) + sec("Artimiausios 7 dienos", soon) + sec("Be termino", none)
           : `<div class="empty"><strong>Šiandien darbų nėra</strong><span>${rows.length ? "Visi veiksmai suplanuoti vėlesnėms dienoms." : "Naują užklausą įveskite mygtuku „+ Užklausa“, o esamą objektą įtraukite jo kortelėje (skiltis „Etapas“)."}</span></div>`;
@@ -103,6 +104,7 @@
       ${c ? (c.next_action ? `<div class="crm-next-box${c.next_due && c.next_due < DZ.today() && ACTIVE.includes(cur) ? " late" : ""}"><b>${esc(c.next_action)}</b><span class="meta">${[c.next_owner, c.next_due ? "iki " + dueTxt(c.next_due) : ""].filter(Boolean).map(esc).join(" · ")}</span></div>` : ACTIVE.includes(cur) ? `<p class="note">Kitas veiksmas nenurodytas.</p>` : "")
         : `<p class="note">Objektas dar neįtrauktas į CRM. Pasirinkite etapą.</p>`}
       <div class="row-end">
+        ${o.client_phone ? `<button class="btn" data-act="sms-open" data-id="${esc(o.id)}">SMS</button>` : ""}
         ${c && cur !== "atsaukta" ? `<button class="btn" data-act="crm-move" data-id="${esc(o.id)}" data-v="atsaukta">Klientas atsisakė</button>` : ""}
         ${c ? `<button class="btn" data-act="crm-edit" data-id="${esc(o.id)}">Keisti</button>` : ""}
         ${c && ACTIVE.includes(cur) ? `<button class="btn primary" data-act="crm-done" data-id="${esc(o.id)}">Atlikta</button>` : ""}
