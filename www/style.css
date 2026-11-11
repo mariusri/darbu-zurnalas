@@ -271,3 +271,5 @@ table.info a { color: var(--steel); }
 .doc-up select { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; }
 .doc-up label { position: relative; overflow: hidden; }
 .doc-up input { position: absolute; inset: 0; opacity: 0; }
+.th.doc > button:first-child { position: relative; }
+.pdf-tag { position: absolute; left: 4px; bottom: 4px; background: var(--danger); color: #fff; font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; letter-spacing: .04em; }
