@@ -61,9 +61,10 @@
       const rows = S.crm.map(c => ({ c, o: objs.get(c.object_id) })).filter(x => x.o);
       const t = DZ.today(), wk = DZ.addDays(t, 7);
       const count = s => rows.filter(x => x.c.stage === s).length;
-      const chips = `<div class="chips">${Object.entries(DZ.STAGES).map(([k, l]) => `<button class="chip-btn stg" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}">${esc(l)} · ${count(k)}</button>`).join("")}</div>`;
+      const chips = `<div class="chips">${Object.entries(DZ.STAGES).map(([k, l]) => `<button class="chip-btn stg" data-act="crm-stage" data-v="${k}" aria-pressed="${v.stage === k}">${esc(l)} · ${count(k)}</button>`).join("")}${DZ.payUnpaid ? `<button class="chip-btn stg" data-act="crm-stage" data-v="neapmoketa" aria-pressed="${v.stage === "neapmoketa"}">Neapmokėta · ${DZ.payUnpaid().length}</button>` : ""}</div>`;
       let body;
-      if (v.stage) {
+      if (v.stage === "neapmoketa" && DZ.payListHtml) body = DZ.payListHtml();
+      else if (v.stage) {
         const list = rows.filter(x => x.c.stage === v.stage).sort((a, b) => (a.c.next_due || "9").localeCompare(b.c.next_due || "9") || DZ.byName(a.o.name, b.o.name));
         body = list.length ? `<div class="stack">${list.map(x => crmRow(x.c, x.o)).join("")}</div>` : `<div class="empty"><span>Šiame etape objektų nėra.</span></div>`;
       } else {
@@ -74,8 +75,9 @@
         const soon = act.filter(x => x.c.next_due > t && x.c.next_due <= wk).sort(by);
         const none = act.filter(x => !x.c.next_due).sort(by);
         const sec = (title, list, cls = "") => list.length ? `<h3 class="sec ${cls}">${title} <span class="meta">${list.length}</span></h3><div class="stack">${list.map(x => crmRow(x.c, x.o)).join("")}</div>` : "";
-        body = !S.loaded ? `<p class="status">Kraunama…</p>` : (late.length || today.length || soon.length || none.length)
-          ? sec("Vėluoja", late, "bad") + sec("Šiandien", today) + sec("Artimiausios 7 dienos", soon) + sec("Be termino", none)
+        const payLate = DZ.payLateHtml ? DZ.payLateHtml() : "";
+        body = !S.loaded ? `<p class="status">Kraunama…</p>` : (payLate || late.length || today.length || soon.length || none.length)
+          ? payLate + sec("Vėluoja", late, "bad") + sec("Šiandien", today) + sec("Artimiausios 7 dienos", soon) + sec("Be termino", none)
           : `<div class="empty"><strong>Šiandien darbų nėra</strong><span>${rows.length ? "Visi veiksmai suplanuoti vėlesnėms dienoms." : "Naują užklausą įveskite mygtuku „+ Užklausa“, o esamą objektą įtraukite jo kortelėje (skiltis „Etapas“)."}</span></div>`;
       }
       return `<section class="stack16">
@@ -175,6 +177,20 @@
       DZ.closeSheet(true); DZ.toast("Išsaugota"); DZ.render();
     });
   }
+  // Etapo / kito veiksmo nustatymas iš kitų modulių (pvz. apmokėjimų)
+  DZ.crmSetNext = async (o, stage, action, due) => {
+    const c = DZ.crmOf(o.id) || {}, closed = ["uzbaigta", "atsaukta"].includes(stage);
+    const row = { object_id: o.id, stage, source: c.source || null, next_action: closed ? null : action, next_owner: closed ? null : (c.next_owner || defOwner() || null), next_due: closed ? null : due, cancel_reason: c.cancel_reason || null, updated_at: new Date().toISOString() };
+    if (stage !== c.stage) row.stage_at = DZ.today();
+    const res = await DZ.sb.from("object_crm").upsert(row).select().single();
+    if (res.error) { DZ.toast("Etapo išsaugoti nepavyko: " + res.error.message, true); return; }
+    const i = S.crm.findIndex(x => x.object_id === o.id); if (i >= 0) S.crm[i] = res.data; else S.crm.push(res.data);
+    if (stage !== c.stage) {
+      const upd = {}; if (STATUS_OF[stage]) upd.status = STATUS_OF[stage];
+      if (DATE_OF[stage] && !o[DATE_OF[stage]]) upd[DATE_OF[stage]] = DZ.today();
+      if (Object.keys(upd).length) { const r = await DZ.sb.from("objects").update(upd).eq("id", o.id).select().single(); if (!r.error) { const j = S.objects.findIndex(x => x.id === o.id); if (j >= 0) S.objects[j] = r.data; } }
+    }
+  };
   const objOf = t => S.objects.find(x => x.id === t.dataset.id);
   DZ.actions["crm-move"] = t => { const o = objOf(t); if (o) openCrmSheet(o, t.dataset.v); };
   DZ.actions["crm-edit"] = t => { const o = objOf(t); if (o) openCrmSheet(o, (DZ.crmOf(o.id) || {}).stage || "uzklausa"); };
