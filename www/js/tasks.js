@@ -62,8 +62,8 @@
     DZ.openEditor(null, { date: task.date <= DZ.today() ? task.date : DZ.today(), object: task.object_id ? DZ.objName(task.object_id) : "", workers: task.assignees || [], work: task.title + (task.description ? "\n" + task.description : ""), taskId: task.id });
   };
 
-  function openTaskEditor(task) {
-    const d = task || { date: S.taskDate, time: "08:00", object_id: null, title: "", description: "", assignees: [] };
+  function openTaskEditor(task, preset) {
+    const d = task || Object.assign({ date: S.taskDate, time: "08:00", object_id: null, title: "", description: "", assignees: [] }, preset || {});
     const objs = S.objects.filter(o => o.status !== "baigta" || o.id === d.object_id).map(o => o.name).sort(DZ.byName);
     const names = [...new Set([...S.crew, ...(d.assignees || [])])];
     DZ.openSheet(`
@@ -106,6 +106,7 @@
     setTimeout(() => { if (!task) $("#t-title").focus(); }, 50);
   }
   DZ.actions["task-new"] = () => openTaskEditor(null);
+  DZ.newTask = preset => openTaskEditor(null, preset);
   DZ.actions["task-edit"] = t => openTaskEditor(S.tasks.find(x => x.id === t.dataset.id));
   DZ.actions["task-del"] = t => {
     const task = S.tasks.find(x => x.id === t.dataset.id); if (!task) return;
