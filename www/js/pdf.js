@@ -63,10 +63,25 @@
       };
       try {
         const doc = await DZ.makePdf(o, opt, m => { st.textContent = m; });
-        st.textContent = "Išsaugoma…";
         const safe = o.name.replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, "").slice(0, 40) || "objektas";
-        await DZ.saveFile(`aktas_${(opt.no || safe).replace(/[^\p{L}\p{N}-]+/gu, "_")}.pdf`, "application/pdf", doc.output("blob"));
+        const fname = `aktas_${(opt.no || safe).replace(/[^\p{L}\p{N}-]+/gu, "_")}.pdf`;
+        const blob = doc.output("blob");
+        // Į Google Drive – į tą patį aplanką kaip objekto nuotraukos (mėnuo pagal paskutinį įrašą su nuotraukomis)
+        let drive = "";
+        if (DZ.uploadFile) {
+          st.textContent = "Įkeliama į Google Drive…";
+          try {
+            const list = DZ.objEntries(o.id), last = list.find(e => (e.photos || []).length) || list[0];
+            const path = await DZ.uploadFile(blob, "application/pdf", fname.replace(/\.pdf$/, ""), o.name, last ? last.date : opt.date);
+            drive = "ok";
+            if (DZ.isAdmin()) { const r = await DZ.sb.from("object_docs").insert({ object_id: o.id, path, type: "aktas", mime: "application/pdf", name: fname, date: DZ.today() }).select().single(); if (!r.error && S.docs) S.docs.push(r.data); }
+          } catch (e) { drive = (e && e.message) || String(e); }
+        }
+        st.textContent = "Išsaugoma…";
+        await DZ.saveFile(fname, "application/pdf", blob);
         DZ.closeSheet(true);
+        if (drive) DZ.toast(drive === "ok" ? "Aktas įkeltas į Google Drive" : "Į Google Drive neįkelta: " + drive, drive !== "ok");
+        DZ.render();
       } catch (e) {
         btn.disabled = false; st.className = "err"; st.textContent = "Nepavyko sukurti PDF: " + (e.message || e);
       }
