@@ -92,16 +92,26 @@
   };
   DZ.hooks.afterLoad.push(() => { DZ.loadDocs().then(() => { if (S.view === "object" && !DZ.sheet) DZ.render(); }); });
   const objDocs = id => S.docs.filter(d => d.object_id === id);
+  const isPdf = d => /pdf/i.test(d.mime || "");
+  // Įkėlimas į Google Drive su tikru failo tipu (nuotrauka ar PDF)
+  async function uploadFile(blob, mime, name, objName) {
+    const r = await fetch(DZ.fnBase + "?date=" + DZ.today() + "&object=" + encodeURIComponent(objName || "") + "&name=" + encodeURIComponent(name || ""), {
+      method: "POST", headers: { ...(await DZ.authHeaders()), "Content-Type": mime }, body: blob
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.id) throw new Error(j.error || ("HTTP " + r.status));
+    return "gd:" + j.id;
+  }
   DZ.objDocsHtml = o => {
     if (!DZ.isAdmin()) return "";
     const docs = objDocs(o.id);
     return `<div class="card">
       <span class="lbl">Dokumentai (mato tik administratoriai)</span>
-      ${docs.length ? `<div class="thumbs docs">${docs.map((d, i) => `<div class="th doc"><button data-act="doc-view" data-id="${esc(o.id)}" data-i="${i}" aria-label="Atidaryti: ${esc(DZ.DOC_TYPES[d.type] || d.type)}">${DZ.imgTag(d.path, 'loading="lazy"')}</button><span class="doc-l">${esc(DZ.DOC_TYPES[d.type] || d.type)}<br>${esc(DZ.shortDate(d.date))}</span><button type="button" class="x" data-act="doc-rm" data-doc="${esc(d.id)}" aria-label="Pašalinti">×</button></div>`).join("")}</div>` : `<p class="note">Dokumentų dar nėra. Nufotografuokite pasiūlymą ar sutartį.</p>`}
+      ${docs.length ? `<div class="thumbs docs">${docs.map((d, i) => `<div class="th doc"><button data-act="doc-view" data-id="${esc(o.id)}" data-i="${i}" aria-label="Atidaryti: ${esc(DZ.DOC_TYPES[d.type] || d.type)}">${DZ.imgTag(d.path, 'loading="lazy"')}${isPdf(d) ? `<span class="pdf-tag">PDF</span>` : ""}</button><span class="doc-l">${esc(DZ.DOC_TYPES[d.type] || d.type)}<br>${esc(DZ.shortDate(d.date))}</span><button type="button" class="x" data-act="doc-rm" data-doc="${esc(d.id)}" aria-label="Pašalinti">×</button></div>`).join("")}</div>` : `<p class="note">Dokumentų dar nėra. Nufotografuokite pasiūlymą ar sutartį.</p>`}
       <div class="doc-up">
         <select id="doc-type" aria-label="Dokumento tipas">${Object.entries(DZ.DOC_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
         <label class="btn">Fotografuoti<input type="file" accept="image/*" capture="environment" data-doc-file="${esc(o.id)}"></label>
-        <label class="btn">Iš galerijos<input type="file" accept="image/*" multiple data-doc-file="${esc(o.id)}"></label>
+        <label class="btn">Įkelti failą (foto, PDF)<input type="file" accept="image/*,application/pdf,.pdf" multiple data-doc-file="${esc(o.id)}"></label>
       </div><p class="note" id="doc-status"></p>
     </div>`;
   };
@@ -125,10 +135,16 @@
     let n = 0;
     for (let i = 0; i < files.length; i++) {
       if (st) { st.className = "note"; st.textContent = `Keliama ${i + 1}/${files.length}…`; }
-      let path;
-      try { path = await DZ.uploadPhoto(await shrink(files[i]), DZ.today(), o.name); }
-      catch (e) { if (st) { st.className = "err"; st.textContent = "Nepavyko įkelti: " + (e.message || e); } continue; }
-      const { data, error } = await DZ.sb.from("object_docs").insert({ object_id: o.id, path, type, date: DZ.today() }).select().single();
+      const file = files[i];
+      const pdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      if (!pdf && !/^image\//.test(file.type)) { if (st) { st.className = "err"; st.textContent = `„${file.name}“ – tinka tik nuotraukos ir PDF.`; } continue; }
+      if (file.size > 15 * 1024 * 1024 && pdf) { if (st) { st.className = "err"; st.textContent = `„${file.name}“ per didelis (daugiausia 15 MB).`; } continue; }
+      let path, mime;
+      try {
+        if (pdf) { mime = "application/pdf"; path = await uploadFile(file, mime, file.name, o.name); }
+        else { mime = "image/jpeg"; path = await uploadFile(await shrink(file), mime, file.name, o.name); }
+      } catch (e) { if (st) { st.className = "err"; st.textContent = "Nepavyko įkelti: " + (e.message || e); } continue; }
+      const { data, error } = await DZ.sb.from("object_docs").insert({ object_id: o.id, path, type, mime, name: file.name.slice(0, 120), date: DZ.today() }).select().single();
       if (error) { DZ.removePhotos([path]); if (st) { st.className = "err"; st.textContent = "Nepavyko išsaugoti: " + error.message; } continue; }
       S.docs.push(data); n++;
     }
@@ -140,7 +156,18 @@
     DZ.toast(n > 1 ? `Įkelta: ${n}` : "Įkelta");
     DZ.render();
   });
-  DZ.actions["doc-view"] = t => { const docs = objDocs(t.dataset.id); if (docs.length) DZ.openLb(docs.map(d => d.path), +t.dataset.i); };
+  DZ.actions["doc-view"] = async t => {
+    const docs = objDocs(t.dataset.id); const d = docs[+t.dataset.i]; if (!d) return;
+    if (!isPdf(d)) { const imgs = docs.filter(x => !isPdf(x)); DZ.openLb(imgs.map(x => x.path), imgs.indexOf(d)); return; }
+    // PDF: atsisiųsti ir atidaryti (telefone – per „Bendrinti“ į PDF peržiūros programą)
+    DZ.toast("Atidaromas PDF…");
+    try {
+      const blob = new Blob([await DZ.photoBlob(d.path, "")], { type: "application/pdf" });
+      const native = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+      if (native) await DZ.saveFile((d.name || "dokumentas.pdf").replace(/[^\p{L}\p{N}._-]+/gu, "_"), "application/pdf", blob);
+      else { const u = URL.createObjectURL(blob); const w = window.open(u, "_blank"); if (!w) await DZ.saveFile(d.name || "dokumentas.pdf", "application/pdf", blob); setTimeout(() => URL.revokeObjectURL(u), 120000); }
+    } catch (e) { DZ.toast("Nepavyko atidaryti: " + (e.message || e), true); }
+  };
   DZ.actions["doc-rm"] = t => {
     const d = S.docs.find(x => x.id === t.dataset.doc); if (!d) return;
     DZ.confirm("Pašalinti dokumentą?", `${DZ.DOC_TYPES[d.type] || d.type}, ${DZ.shortDate(d.date)}. Nuotrauka bus perkelta į Google Drive šiukšlinę.`, "Pašalinti", async () => {
