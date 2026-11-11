@@ -273,3 +273,4 @@ table.info a { color: var(--steel); }
 .doc-up input { position: absolute; inset: 0; opacity: 0; }
 .th.doc > button:first-child { position: relative; }
 .pdf-tag { position: absolute; left: 4px; bottom: 4px; background: var(--danger); color: #fff; font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; letter-spacing: .04em; }
+.bottom-nav { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
