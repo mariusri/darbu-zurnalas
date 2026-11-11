@@ -306,3 +306,9 @@ table.info a { color: var(--steel); }
 .pay-row.late { border-left: 4px solid var(--danger); }
 .pay-row .q { font-variant-numeric: tabular-nums; }
 .row-end.tight { gap: 6px; }
+/* SMS ir garantija */
+.pill.ws-gauta { background: #f6e3e3; border-color: #e3b9b9; color: #7a2c2c; }
+.pill.ws-sprendziama { background: #ffe0c2; border-color: #f2b27a; color: #7a3a00; }
+.pill.ws-isspresta { background: #dcefe0; border-color: #a9d3b3; color: #1f5c2d; }
+.w-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; }
+#sms-text { min-height: 120px; }
