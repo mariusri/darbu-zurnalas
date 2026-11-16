@@ -19,9 +19,10 @@
     return { street: street || p[0] || "", city, sav: sav ? sav.replace(/\.?$/, ".") : "" };
   };
 
-  function rows() {
+  function rows(onlyId) {
     const seen = new Map();
     for (const o of S.objects) {
+      if (onlyId && o.id !== onlyId) continue;
       const name = (o.client_name || "").trim(); if (!name) continue;
       const eso = o.eso || {};
       const addr = eso.client_address || o.address || "";
@@ -36,8 +37,10 @@
     return [...seen.values()].sort((x, y) => DZ.byName(x[1], y[1]));
   }
 
-  DZ.actions["centas-export"] = async () => {
-    const list = rows();
+  // Iš objektų sąrašo – visi klientai; iš objekto kortelės (data-id) – tik to objekto klientas
+  DZ.actions["centas-export"] = async t => {
+    const only = t && t.dataset && t.dataset.id;
+    const list = rows(only);
     if (!list.length) { DZ.toast("Nėra objektų su klientu", true); return; }
     DZ.toast("Ruošiamas failas…");
     try {
@@ -49,7 +52,8 @@
       const wb = window.XLSX.utils.book_new();
       window.XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
       const out = window.XLSX.write(wb, { bookType: "biff8", type: "array" });
-      const name = "kontrahentai_centas_" + DZ.today().replace(/-/g, "") + ".xls";
+      const who = only ? "_" + (list[0][1].replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, "").slice(0, 30)) : "";
+      const name = "kontrahentai_centas" + who + "_" + DZ.today().replace(/-/g, "") + ".xls";
       await DZ.saveFile(name, "application/vnd.ms-excel", new Blob([out], { type: "application/vnd.ms-excel" }));
       const noCode = list.filter(r => !r[0]).length;
       DZ.toast(`Eksportuota klientų: ${list.length}` + (noCode ? ` (be kodo: ${noCode})` : ""));
