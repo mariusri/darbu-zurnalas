@@ -12,13 +12,18 @@
     const isMod = m => /modul/i.test(m.name), isInv = m => /inverter|keitikl/i.test(m.name);
     const lines = [];
     // Moduliai ir inverteris – iš objekto kortelės (jei užpildyta), kitos pagrindinės prekės – iš įrašų
+    // Galia – iš rangovo deklaracijos (jei įkelta ir modelis sutampa)
+    const k = o.eso && o.eso.decl ? o.eso.decl : {};
+    const same = (a, b) => a && b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
     if (o.module_type) {
       const q = Number(o.module_count) || tot.filter(isMod).reduce((s, m) => s + m.qty, 0);
-      lines.push(q ? `${fmtQ(q)} vnt. fotomodulių ${o.module_type}` : `Fotomoduliai ${o.module_type}`);
+      const kw = same(k.module_type, o.module_type) && k.installed_kw ? ` (bendra galia ${fmtQ(k.installed_kw)} kW)` : "";
+      lines.push((q ? `${fmtQ(q)} vnt. fotomodulių ${o.module_type}` : `Fotomoduliai ${o.module_type}`) + kw);
     }
     if (o.inverter) {
       const q = Number(o.inverter_count) || tot.filter(isInv).reduce((s, m) => s + m.qty, 0) || 1;
-      lines.push(`${fmtQ(q)} vnt. inverteris ${o.inverter}`);
+      const kw = same(k.inverter, o.inverter) && k.inverter_kw ? ` (${fmtQ(k.inverter_kw)} kW)` : "";
+      lines.push(`${fmtQ(q)} vnt. inverteris ${o.inverter}${kw}`);
     }
     const rest = tot.filter(m => !(o.module_type && isMod(m)) && !(o.inverter && isInv(m)));
     const main = rest.filter(isMain);
