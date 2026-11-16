@@ -31,7 +31,7 @@
       for (const e of S.entries) { const id = DZ.entryObjectId(e); if (id && (!lastDate[id] || e.date > lastDate[id])) lastDate[id] = e.date; }
       list.sort((a, b) => (lastDate[b.id] || "").localeCompare(lastDate[a.id] || "") || DZ.byName(a.name, b.name));
       return `<section class="stack16">
-        <div class="view-head"><h2>Objektai</h2><span class="meta">${list.length}</span>${DZ.isAdmin() && DZ.calendarHtml ? `<div class="seg small" role="group"><button data-act="o-mode" data-v="list" aria-pressed="true">Sąrašas</button><button data-act="o-mode" data-v="cal" aria-pressed="false">Kalendorius</button></div>` : ""}</div>
+        <div class="view-head"><h2>Objektai</h2><span class="meta">${list.length}</span>${DZ.isAdmin() ? `<button class="btn small" data-act="centas-export" title="Kontrahentų lentelė „Centui“">Į Centą</button>` : ""}${DZ.isAdmin() && DZ.calendarHtml ? `<div class="seg small" role="group"><button data-act="o-mode" data-v="list" aria-pressed="true">Sąrašas</button><button data-act="o-mode" data-v="cal" aria-pressed="false">Kalendorius</button></div>` : ""}</div>
         <div class="card">
           <input id="o-q" type="search" placeholder="Ieškoti: pavadinimas, adresas, klientas" value="${esc(f.text)}" autocomplete="off">
           <div class="chips">${[["aktyvus", "Aktyvūs"], ...Object.entries(DZ.OBJ_STATUS), ["visi", "Visi"]].map(([k, v]) => `<button class="chip-btn" data-act="o-filter" data-v="${k}" aria-pressed="${f.status === k}">${esc(v)}</button>`).join("")}</div>
@@ -71,6 +71,7 @@
             ${row("Klientas", esc(o.client_name))}
             ${row("Telefonas", o.client_phone ? `<a href="tel:${esc(o.client_phone.replace(/\s/g, ""))}">${esc(o.client_phone)}</a>` : "")}
             ${row("El. paštas", o.client_email ? `<a href="mailto:${esc(o.client_email)}">${esc(o.client_email)}</a>` : "")}
+            ${row("Kodas", [o.client_code ? esc(o.client_code) : "", o.client_vat ? "PVM " + esc(o.client_vat) : ""].filter(Boolean).join(" · "))}
             ${row("Galia", o.power_kw ? fmtQ(o.power_kw) + " kW" : "")}
             ${row("Saulės moduliai", [o.module_count ? o.module_count + " vnt." : "", esc(o.module_type)].filter(Boolean).join(" "))}
             ${row("Inverteris", [o.inverter_count ? o.inverter_count + " vnt." : "", esc(o.inverter)].filter(Boolean).join(" "))}
@@ -125,6 +126,7 @@
       ${inp("o-addr", "Adresas", d.address)}
       <div class="row2">${inp("o-cname", "Klientas", d.client_name)}${inp("o-cphone", "Telefonas", d.client_phone, "tel")}</div>
       ${inp("o-cmail", "Kliento el. paštas", d.client_email, "email")}
+      ${lead ? `<div class="row2">${inp("o-ccode", "Įmonės / asmens kodas", d.client_code, "text", 'inputmode="numeric" autocomplete="off"')}${inp("o-cvat", "PVM kodas", d.client_vat, "text", 'placeholder="LT…" autocomplete="off"')}</div>` : ""}
       ${inp("o-kw", "Galia, kW", d.power_kw, "number", 'step="any" inputmode="decimal"')}
       <div class="row-q">${inp("o-mtype", "Saulės modulių tipas", d.module_type, "text", 'placeholder="pvz. LONGI Solar LR7-54HVH-485M"')}${inp("o-mcount", "Kiekis, vnt.", d.module_count, "number", 'step="1" min="0" inputmode="numeric"')}</div>
       <div class="row-q">${inp("o-inv", "Inverteris", d.inverter, "text", 'placeholder="pvz. SOLIS S6-EH3P10K-H-EU"')}${inp("o-icount", "Kiekis, vnt.", d.inverter_count, "number", 'step="1" min="0" inputmode="numeric"')}</div>
@@ -147,6 +149,7 @@
         name: v("o-name"), address: v("o-addr"), client_name: v("o-cname"), client_phone: v("o-cphone"), client_email: v("o-cmail"),
         power_kw: v("o-kw") ? DZ.num(v("o-kw")) : null, module_type: v("o-mtype"), module_count: v("o-mcount") ? Math.round(DZ.num(v("o-mcount"))) : null, inverter: v("o-inv"), inverter_count: v("o-icount") ? Math.round(DZ.num(v("o-icount"))) : null, status: v("o-status"), notes: $("#o-notes").value.trim(), updated_at: new Date().toISOString()
       };
+      if ($("#o-ccode")) { row.client_code = v("o-ccode"); row.client_vat = v("o-cvat").toUpperCase().replace(/\s/g, ""); }
       if ($("#o-cdate")) { row.contract_no = v("o-cno"); row.contract_date = v("o-cdate") || null; row.contract_sum = v("o-csum") ? DZ.num(v("o-csum")) : null; }
       if (DZ.esoPending) row.eso = DZ.esoPending.data;
       if ($("#o-doffer")) { row.offer_date = v("o-doffer") || null; row.install_date = v("o-dinst") || null; row.done_date = v("o-ddone") || null; }
