@@ -272,6 +272,7 @@
           <div class="row2">${inp("c-city", "Miestas (akto vieta)", c.city)}${inp("c-bank", "Bankas", c.bank)}</div>
           ${inp("c-iban", "Atsiskaitomoji sąskaita", c.iban)}
           <div class="row2">${inp("c-dir", "Direktorius", c.director)}${inp("c-dirgen", "Direktoriaus (kieno?)", c.director_gen)}</div>
+          ${inp("c-hours", "Darbo laikas (pasiūlymo PDF)", c.hours)}
           <span class="lbl">Savikaina</span>
           ${inp("c-rate", "Darbo valandos įkainis, €", DZ.hourRate() || "", "number")}
           <p class="note">Naudojamas objekto savikainai ir valandų ataskaitai. Palikite tuščią, jei nenorite skaičiuoti.</p>
@@ -288,7 +289,7 @@
       $("#set-form").addEventListener("submit", async ev => {
         ev.preventDefault();
         const v = id => $("#" + id).value.trim();
-        const company = { name: v("c-name"), code: v("c-code"), vat: v("c-vat"), address: v("c-addr"), phone: v("c-phone"), email: v("c-email"), city: v("c-city"), bank: v("c-bank"), iban: v("c-iban"), director: v("c-dir"), director_gen: v("c-dirgen") };
+        const company = { name: v("c-name"), code: v("c-code"), vat: v("c-vat"), address: v("c-addr"), phone: v("c-phone"), email: v("c-email"), city: v("c-city"), bank: v("c-bank"), iban: v("c-iban"), director: v("c-dir"), director_gen: v("c-dirgen"), hours: v("c-hours") };
         const hour_rate = { value: DZ.num(v("c-rate")) };
         const { error } = await DZ.sb.from("settings").upsert([{ key: "company", value: company, updated_at: new Date().toISOString() }, { key: "hour_rate", value: hour_rate, updated_at: new Date().toISOString() }]);
         if (error) { DZ.toast("Nepavyko: " + error.message, true); return; }
