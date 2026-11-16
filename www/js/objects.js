@@ -83,6 +83,7 @@
             ${o.address ? `<a class="btn" href="https://maps.google.com/?q=${encodeURIComponent(o.address)}" target="_blank" rel="noopener">Žemėlapis</a>` : ""}
             ${DZ.isLead() ? `<button class="btn" data-act="obj-edit" data-id="${esc(o.id)}">Redaguoti</button>` : ""}
             ${DZ.isAdmin() && o.client_name ? `<button class="btn" data-act="centas-export" data-id="${esc(o.id)}">Į Centą</button>` : ""}
+            ${DZ.isAdmin() ? `<button class="btn" data-act="contract-open" data-id="${esc(o.id)}">Sutartis</button>` : ""}
             <button class="btn primary" data-act="pdf-open" data-id="${esc(o.id)}">PDF aktas</button>
           </div>
         </div>
