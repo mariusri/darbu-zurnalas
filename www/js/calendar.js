@@ -94,8 +94,9 @@
   const objDocs = id => S.docs.filter(d => d.object_id === id);
   const isPdf = d => /pdf/i.test(d.mime || "");
   // Įkėlimas į Google Drive su tikru failo tipu (nuotrauka ar PDF)
-  async function uploadFile(blob, mime, name, objName, date) {
-    const r = await fetch(DZ.fnBase + "?date=" + (date || DZ.today()) + "&object=" + encodeURIComponent(objName || "") + "&name=" + encodeURIComponent(name || ""), {
+  // toRoot – tiesiai į pagrindinį aplanką „Darbų žurnalas“ (be mėnesio ir objekto aplankų)
+  async function uploadFile(blob, mime, name, objName, date, toRoot) {
+    const r = await fetch(DZ.fnBase + "?date=" + (date || DZ.today()) + "&object=" + encodeURIComponent(objName || "") + "&name=" + encodeURIComponent(name || "") + (toRoot ? "&folder=root" : ""), {
       method: "POST", headers: { ...(await DZ.authHeaders()), "Content-Type": mime }, body: blob
     });
     const j = await r.json().catch(() => ({}));

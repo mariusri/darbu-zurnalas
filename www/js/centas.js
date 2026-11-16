@@ -55,7 +55,7 @@
       const who = only ? "_" + (list[0][1].replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, "").slice(0, 30)) : "";
       const name = "kontrahentai_centas" + who + "_" + DZ.today().replace(/-/g, "") + ".xls";
       const blob = new Blob([out], { type: "application/vnd.ms-excel" });
-      // Į Google Drive – į tą patį aplanką kaip kiti dokumentai (Darbų žurnalas → mėnuo → objektas)
+      // Į Google Drive – kaip kiti dokumentai (Darbų žurnalas → mėnuo → objektas)
       let drive = "";
       if (DZ.uploadFile && DZ.fnBase) {
         DZ.toast("Įkeliama į Google Drive…");
@@ -63,7 +63,8 @@
           const o = only ? S.objects.find(x => x.id === only) : null;
           const ents = o && DZ.objEntries ? DZ.objEntries(o.id) : [];
           const last = ents.find(e => (e.photos || []).length) || ents[0];
-          await DZ.uploadFile(blob, "application/vnd.ms-excel", name.replace(/\.xls$/, ""), o ? o.name : "", last ? last.date : DZ.today());
+          // Vieno objekto klientas – į objekto aplanką; visi klientai – į pagrindinį „Darbų žurnalas“
+          await DZ.uploadFile(blob, "application/vnd.ms-excel", name.replace(/\.xls$/, ""), o ? o.name : "", last ? last.date : DZ.today(), !o);
           drive = "ok";
         } catch (e) { drive = (e && e.message) || String(e); }
       }
