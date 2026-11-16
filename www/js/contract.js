@@ -31,27 +31,37 @@
 
   // ---------- Duomenys sutarčiai ----------
   const PLACE = t => { const m = /\b(ant\s.+|antžemin.+)$/i.exec(t || ""); return m ? m[1].replace(/\s+/g, " ").trim() : ""; };
-  function gather(o) {
-    const offer = (S.offers || []).filter(x => x.object_id === o.id).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no - a.no)[0] || null;
+  const objOffers = o => (S.offers || []).filter(x => x.object_id === o.id).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.no - a.no);
+  // offerId: undefined – naujausias pasiūlymas; "" – be pasiūlymo; kitaip – nurodytas
+  function gather(o, offerId) {
+    const list = objOffers(o);
+    const offer = offerId === "" ? null : offerId ? list.find(x => x.id === offerId) || null : list[0] || null;
     const calc = offer && DZ.offerCalc ? DZ.offerCalc(offer) : null;
     const total = calc ? calc.total : (Number(o.contract_sum) || 0);
     const vat = offer ? DZ.num(offer.vat) : 21;
     const net = calc ? calc.net : r2(total / (1 + vat / 100));
-    const lines = offer && offer.lines && offer.lines.length ? offer.lines.map(l => ({ name: l.name, qty: l.qty === "" || l.qty == null ? "" : fmtQ(l.qty) + " " + (l.unit || "") }))
+    const lines = offer && offer.lines && offer.lines.length ? offer.lines.map(l => ({ name: l.name, desc: l.desc || "", qty: l.qty === "" || l.qty == null ? "" : fmtQ(l.qty) + " " + (l.unit || ""), price: l.price, sum: r2(DZ.num(l.qty) * DZ.num(l.price)) }))
       : [o.module_type ? { name: "Saulės moduliai " + o.module_type, qty: o.module_count ? o.module_count + " vnt." : "" } : null,
          o.inverter ? { name: "Inverteris " + o.inverter, qty: (o.inverter_count || 1) + " vnt." } : null].filter(Boolean);
-    return { offer, total, net, vat, vatSum: r2(total - net), lines, place: PLACE(offer && offer.title) };
+    return { offer, calc, total, net, vat, vatSum: r2(total - net), lines, place: PLACE(offer && offer.title) };
   }
   const defaults = () => Object.assign({ days: 30, w_mod: 12, w_pow: 25, w_inv: 10, w_bat: 10, w_mount: 10, w_work: 5, advance: 30, reply: 10 }, S.settings.contract || {});
 
   // ---------- Langas ----------
   DZ.actions["contract-open"] = t => {
     const o = S.objects.find(x => x.id === t.dataset.id); if (!o) return;
-    const g = gather(o), d = defaults();
+    const offers = objOffers(o);
+    const g = gather(o, t.dataset.offer), d = defaults();
+    const sel = g.offer ? g.offer.id : "";
     const n = (id, l, val) => `<label class="field"><span class="lbl">${l}</span><input id="${id}" type="number" step="1" min="0" inputmode="numeric" value="${esc(val)}"></label>`;
     const miss = [!o.client_code && "kliento asmens / įmonės kodas", !S.settings.company.code && "įmonės kodas (meniu ⋯ → Įmonės nustatymai)", !S.settings.company.iban && "atsiskaitomoji sąskaita", !g.total && "kaina (sukurkite pasiūlymą arba įrašykite sutarties sumą)"].filter(Boolean);
     DZ.openSheet(`<h2>Sutartis</h2>
-      <p class="note">${esc(o.name)}${o.client_name ? " · " + esc(o.client_name) : ""}${g.offer ? ` · pagal pasiūlymą Nr. ${esc(g.offer.no)}` : ""}${g.total ? " · " + DZ.money(g.total) : ""}</p>
+      <p class="note">${esc(o.name)}${o.client_name ? " · " + esc(o.client_name) : ""}</p>
+      <label class="field"><span class="lbl">Kaina ir specifikacija pagal</span><select id="ct-offer">
+        ${offers.map(x => `<option value="${esc(x.id)}" ${x.id === sel ? "selected" : ""}>Pasiūlymą Nr. ${esc(x.no)} · ${esc(DZ.shortDate(x.date))} · ${DZ.money(DZ.offerCalc(x).total)}</option>`).join("")}
+        <option value="" ${!sel ? "selected" : ""}>Be pasiūlymo${o.contract_sum ? " (sutarties suma " + DZ.money(o.contract_sum) + ")" : ""}</option>
+      </select></label>
+      ${g.offer ? `<p class="note">${esc(g.offer.title || "")} · ${g.lines.length} eil.${g.calc && g.calc.disc ? " · nuolaida " + DZ.money(g.calc.disc) : ""} · iš viso su PVM <b>${DZ.money(g.total)}</b></p>` : ""}
       <div class="row2"><label class="field"><span class="lbl">Sutarties Nr.</span><input id="ct-no" value="${esc(o.contract_no || "")}" autocomplete="off"></label>
         <label class="field"><span class="lbl">Data</span><input type="date" id="ct-date" value="${esc(o.contract_date || DZ.today())}"></label></div>
       <label class="field"><span class="lbl">Įrengimo vieta</span><input id="ct-place" value="${esc(g.place)}" placeholder="pvz. ant skardos stogo"></label>
@@ -62,6 +72,13 @@
       ${miss.length ? `<p class="note box">Trūksta: ${esc(miss.join("; "))}. Šios vietos sutartyje liks su brūkšniais ranka įrašyti.</p>` : ""}
       <p class="note" id="ct-status">Terminai ir garantijos įsimenami kitoms sutartims.</p>
       <div class="sheet-actions"><button type="button" class="btn" data-act="close">Atšaukti</button><button type="submit" class="btn primary">Sukurti PDF</button></div>`, { form: true, id: "ct-form" });
+    // Pakeitus pasiūlymą – langas perpiešiamas su jo duomenimis (įvesti terminai išlaikomi)
+    $("#ct-offer").addEventListener("change", ev => {
+      const keep = {}; for (const id of ["ct-no", "ct-date", "ct-days", "ct-adv", "ct-reply", "ct-wmod", "ct-wpow", "ct-winv", "ct-wbat", "ct-wmount", "ct-wwork"]) keep[id] = $("#" + id).value;
+      DZ.closeSheet(true);
+      DZ.actions["contract-open"]({ dataset: { id: o.id, offer: ev.target.value } });
+      for (const [id, val] of Object.entries(keep)) $("#" + id).value = val;
+    });
     $("#ct-form").addEventListener("submit", async ev => {
       ev.preventDefault();
       const btn = $("#ct-form button[type=submit]"); btn.disabled = true;
@@ -249,10 +266,21 @@
         y += h; doc.setDrawColor(200); doc.setLineWidth(0.15); doc.line(ML, y - 3.2, ML + CW, y - 3.2);
       });
     };
-    const spec = g.lines.map((l, i) => [i + 1 + ".", l.name, l.qty]);
+    // Eilutės – iš pasiūlymo; jei pasiūlyme rodomos eilučių kainos, jos rodomos ir specifikacijoje
+    const priced = !!(g.offer && g.offer.show_prices);
+    const nm = l => l.name + (l.desc ? " (" + l.desc + ")" : "");
+    const spec = g.lines.map((l, i) => priced ? [i + 1 + ".", nm(l), l.qty, l.price === "" || l.price == null ? "" : money(l.price), money(l.sum)] : [i + 1 + ".", nm(l), l.qty]);
     const extra = ["Kabeliai, MC4 jungtys, apsaugos (DC kirtiklis, viršįtampių ribotuvai), įžeminimas, kintamosios srovės skydelis", "Dokumentų ESO (ir APVA, jei taikoma) parengimas ir pateikimas", "Stebėsenos sistemos (programėlės) prijungimas, Užsakovo apmokymas"];
-    for (const e of extra) if (!g.lines.some(l => DZ.norm(l.name).includes(DZ.norm(e).slice(0, 12)))) spec.push([spec.length + 1 + ".", e, "1 kompl."]);
-    table([{ t: "Nr.", w: 12 }, { t: "Įranga / darbai", w: CW - 12 - 32 }, { t: "Kiekis", w: 32, r: true }], spec);
+    for (const e of extra) if (!g.lines.some(l => DZ.norm(l.name).includes(DZ.norm(e).slice(0, 12)))) spec.push(priced ? [spec.length + 1 + ".", e, "1 kompl.", "", "įskaičiuota"] : [spec.length + 1 + ".", e, "1 kompl."]);
+    if (priced && g.calc) {
+      spec.push(["", "Suma be PVM", "", "", money(g.calc.sub)]);
+      if (g.calc.disc) spec.push(["", "Nuolaida", "", "", "− " + money(g.calc.disc)]);
+      spec.push(["", `PVM ${fmtQ(g.vat)} %`, "", "", money(g.vatSum)], ["", "Iš viso su PVM", "", "", money(g.total)]);
+      table([{ t: "Nr.", w: 10 }, { t: "Įranga / darbai", w: CW - 10 - 24 - 28 - 28 }, { t: "Kiekis", w: 24, r: true }, { t: "Kaina be PVM", w: 28, r: true }, { t: "Suma be PVM", w: 28, r: true }], spec, true);
+    } else {
+      if (g.total) spec.push(["", "Kaina iš viso su PVM" + (g.calc && g.calc.disc ? " (su nuolaida)" : ""), money(g.total) + " €"]);
+      table([{ t: "Nr.", w: 12 }, { t: "Įranga / darbai", w: CW - 12 - 32 }, { t: "Kiekis", w: 32, r: true }], spec, !!g.total);
+    }
 
     // Priedas Nr. 2
     y += 6; need(40);

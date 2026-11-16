@@ -144,6 +144,7 @@
         ${!tpl ? `<button type="button" class="btn" id="of-astpl">Kaip šabloną</button>` : ""}
         <button type="button" class="btn" data-act="close">Atšaukti</button>
         <button type="submit" class="btn${tpl ? " primary" : ""}">Išsaugoti</button>
+        ${!tpl && DZ.actions["contract-open"] ? `<button type="button" class="btn" id="of-contract">Sutartis</button>` : ""}
         ${!tpl ? `<button type="button" class="btn primary" id="of-pdf">PDF</button>` : ""}
       </div>`, { form: true, id: "offer-form" });
     setLines(d.lines);
@@ -218,6 +219,14 @@
       // Kiekiai išsaugomi kaip yra; antraštėje galia pakeičiama {kW}
       const t = { name: "", title: o.power_kw ? f.title.replace(fmtQ(o.power_kw), "{kW}") : f.title, show_prices: f.show_prices, lines: f.lines.map(l => ({ ...l, per: perOf(l, o) })), notes: f.notes };
       openTplFrom(t);
+    };
+    // Sutartis pagal šį pasiūlymą (pirma išsaugomas)
+    if ($("#of-contract")) $("#of-contract").onclick = async () => {
+      err(""); busy(true);
+      const r = await save(); busy(false);
+      if (!r) return;
+      DZ.closeSheet(true); DZ.render();
+      DZ.actions["contract-open"]({ dataset: { id: o.id, offer: r.id } });
     };
     if ($("#of-del")) $("#of-del").onclick = () => {
       DZ.confirm(tpl ? "Ištrinti šabloną?" : "Ištrinti pasiūlymą?", tpl ? `„${x.name}“.` : `Nr. ${x.no} „${x.title}“. Atkurti nebus galima.`, "Ištrinti", async () => {
