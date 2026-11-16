@@ -350,3 +350,10 @@ table.info a { color: var(--steel); }
 .task .seg button { padding: 7px 4px; border-radius: 9px; text-align: center; }
 .task .entry-actions { flex-wrap: wrap; }
 .task .entry-actions .btn { flex: 1 1 auto; }
+/* ESO prijungimo sąlygų importas */
+.eso-import { border: 1px dashed var(--line); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.eso-btn { align-self: flex-start; cursor: pointer; }
+.eso-btn.busy { opacity: .6; pointer-events: none; }
+#eso-status.err { color: var(--danger); }
+input.eso-filled { border-color: #2f7a3e; box-shadow: 0 0 0 2px rgba(47,122,62,.15); }
+.eso-card td.muted { width: 42%; }
