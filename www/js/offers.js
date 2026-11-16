@@ -251,8 +251,8 @@
   DZ.actions["tpl-new"] = () => openEditor("tpl", null, null);
   DZ.actions["tpl-edit"] = t => { const x = S.offerTpls.find(y => y.id === t.dataset.id); if (x) openEditor("tpl", null, x); };
 
-  // ---------- PDF ----------
-  let fonts = null;
+  // ---------- PDF (išvaizda kaip Wantly pasiūlyme) ----------
+  let fonts = null, imgs = null;
   async function b64(url) {
     const r = await fetch(url); if (!r.ok) throw new Error("nerastas " + url);
     const buf = new Uint8Array(await r.arrayBuffer());
@@ -262,7 +262,14 @@
   async function loadLibs(progress) {
     if (!window.jspdf) { progress("Įkeliama PDF biblioteka…"); await DZ.loadScript("vendor/jspdf.umd.min.js"); }
     if (!fonts) { progress("Įkeliamas šriftas…"); fonts = await Promise.all(["DejaVuSans", "DejaVuSans-Bold"].map(n => b64("vendor/" + n + ".ttf"))); }
+    if (!imgs) {
+      imgs = {};
+      try { imgs.logo = "data:image/png;base64," + await b64("img/elreda-logo.png"); } catch (_) {}
+      try { imgs.banner = "data:image/jpeg;base64," + await b64("img/banner.jpg"); } catch (_) {}
+    }
   }
+  // Įmonės pavadinimas be kabučių, didžiosiomis: „UAB ELREDA“
+  DZ.coUpper = () => String(DZ.company().name || "UAB Elreda").replace(/[„“”"]/g, "").trim().toUpperCase();
 
   DZ.offerPdf = async (o, x, progress = () => {}) => {
     await loadLibs(progress);
@@ -271,121 +278,166 @@
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     doc.addFileToVFS("S.ttf", fonts[0]); doc.addFont("S.ttf", "S", "normal");
     doc.addFileToVFS("S-B.ttf", fonts[1]); doc.addFont("S-B.ttf", "S", "bold");
-    const W = 210, H = 297, ML = 16, MR = 16, CW = W - ML - MR, BOT = H - 20;
-    const ACC = [31, 111, 92], INK = [28, 33, 38], MUT = [105, 112, 120], SOFT = [238, 244, 241];
+    const W = 210, H = 297, ML = 14, MR = 14, CW = W - ML - MR, BOT = H - 16;
+    const WHITE = [255, 255, 255], INK = [40, 44, 52], MUT = [120, 126, 136], CARD = [243, 244, 246], GREEN = [76, 175, 110], BEIGE = [246, 237, 226];
+    const G1 = [35, 215, 235], G2 = [199, 197, 72];
     const font = (st = "normal", sz = 9.5, col = INK) => { doc.setFont("S", st); doc.setFontSize(sz); doc.setTextColor(...col); };
     let y = 0;
-    const need = h => { if (y + h > BOT) { doc.addPage(); y = 18; return true; } return false; };
-    const money = v => DZ.money(v).replace(/ /g, " ");
-    const c = DZ.company();
-    const calc = DZ.offerCalc(x);
+    const need = h => { if (y + h > BOT) { doc.addPage(); y = 16; return true; } return false; };
+    const money = v => DZ.money(v);
+    const c = DZ.company(), co = DZ.coUpper();
+    const calc = DZ.offerCalc(x), vk = 1 + DZ.num(x.vat) / 100;
     const lines = x.lines || [];
+    const gradient = (x0, y0, w, h) => { const n = 120; for (let i = 0; i < n; i++) { const t = i / (n - 1); doc.setFillColor(...G1.map((a, k) => Math.round(a + (G2[k] - a) * t))); doc.rect(x0 + w * i / n, y0, w / n + 0.3, h, "F"); } };
 
-    // Antraštės juosta
-    doc.setFillColor(...ACC); doc.rect(0, 0, W, 34, "F");
-    font("bold", 17, [255, 255, 255]); doc.text(c.name || "UAB Elreda", ML, 15);
-    font("normal", 8.5, [222, 238, 232]);
-    const contact = [c.address, c.phone ? "Tel. " + c.phone : "", c.email].filter(Boolean);
-    contact.forEach((t, i) => doc.text(t, W - MR, 10 + i * 4.4, { align: "right" }));
-    const ids = [c.code ? "Įm. k. " + c.code : "", c.vat ? "PVM k. " + c.vat : ""].filter(Boolean).join(" · ");
-    if (ids) doc.text(ids, ML, 22);
-    font("bold", 10, [255, 255, 255]); doc.text("Saulės elektrinės – projektavimas ir montavimas", ML, 28.5);
-    y = 46;
+    // ---- Antraštė: spalvų perėjimas, logotipas, kontaktai ----
+    const HB = 68;
+    gradient(0, 0, W, HB);
+    doc.setFillColor(...WHITE); doc.roundedRect(0, HB - 9, W, 30, 9, 9, "F");
+    if (imgs.logo) doc.addImage(imgs.logo, "PNG", ML, 7, 34, 34 * 347 / 900);
+    font("normal", 7.5, WHITE);
+    doc.text([c.hours || "I - V 9:00 - 18:00", c.address, c.email, c.phone].filter(Boolean).join("     "), W - MR, 11, { align: "right" });
+    // Kliento eilutė ir pavadinimas
+    font("bold", 12.5, WHITE);
+    const who = [(o.client_name || o.name || "").toUpperCase(), o.power_kw ? fmtQ(o.power_kw) + " kW" : "", o.address].filter(Boolean).join(" ");
+    const wl = doc.splitTextToSize(who, 118).slice(0, 3);
+    let hy = 30; doc.text(wl, ML, hy); hy += wl.length * 5.4 + 3;
+    font("bold", 19, WHITE); doc.text("Komercinis pasiūlymas", ML, hy + 1); hy += 7.5;
+    font("bold", 8, WHITE); doc.text("Tiekėjas:", ML, hy); const tw = doc.getTextWidth("Tiekėjas: "); font("normal", 8, WHITE); doc.text(co, ML + tw + 0.5, hy);
+    // Kortelė dešinėje: parengė UAB ELREDA
+    const KX = 136, KY = 24, KW = W - MR - KX, KH = 17;
+    doc.setFillColor(...WHITE); doc.roundedRect(KX, KY, KW, KH, 8.5, 8.5, "F");
+    if (imgs.logo) doc.addImage(imgs.logo, "PNG", KX + 5, KY + 4, 23, 23 * 347 / 900);
+    font("bold", 8.5, INK); doc.text(co, KX + 32, KY + 7.5);
+    font("normal", 8, MUT); doc.text("„Dirbame Jums“", KX + 32, KY + 12);
+    y = HB + 6;
 
-    // Pasiūlymo ir kliento blokai
-    font("bold", 15); doc.text("Komercinis pasiūlymas", ML, y);
-    font("normal", 9.5, MUT); doc.text("Nr. " + x.no, ML, y + 6);
-    doc.text("Data: " + DZ.shortDate(x.date), ML, y + 11);
-    if (x.valid_until) doc.text("Galioja iki: " + DZ.shortDate(x.valid_until), ML, y + 16);
-    const RX = 118;
-    font("bold", 8, MUT); doc.text("KLIENTAS", RX, y - 4.5);
-    const cl = [[o.client_name || o.name, "bold"], [o.address, "normal"], [o.client_phone ? "Tel. " + o.client_phone : "", "normal"], [o.client_email, "normal"]].filter(r => r[0]);
-    let cy = y;
-    for (const [t, st] of cl) { font(st, st === "bold" ? 10.5 : 9.5); const ls = doc.splitTextToSize(t, W - MR - RX); doc.text(ls, RX, cy); cy += ls.length * 4.6 + 0.6; }
-    y = Math.max(y + 27, cy + 6);
+    // ---- Pasiūlymo duomenys ----
+    font("normal", 8.5, MUT);
+    doc.text(["Pasiūlymo Nr. " + x.no, "Data " + DZ.shortDate(x.date), x.valid_until ? "Galioja iki " + DZ.shortDate(x.valid_until) : ""].filter(Boolean).join("     "), ML, y);
+    const cc = [o.client_phone ? "Tel. " + o.client_phone : "", o.client_email].filter(Boolean).join("     ");
+    if (cc) doc.text(cc, W - MR, y, { align: "right" });
+    y += 10;
 
-    // Viena kaina – antraštė yra pirmoji lentelės eilutė, atskirai nekartojama
-    if (x.title && x.show_prices) { font("bold", 12.5); const ls = doc.splitTextToSize(x.title, CW); doc.text(ls, ML, y); y += ls.length * 5.6 + 3; }
-
-    // Lentelė
-    const C = { name: ML + 2, qty: ML + 112, price: ML + 146, sum: ML + CW - 2 };
-    const head = () => {
-      doc.setFillColor(...SOFT); doc.rect(ML, y - 4.6, CW, 7, "F");
-      font("bold", 8.5, MUT);
-      doc.text("PAVADINIMAS", C.name, y); doc.text("KIEKIS", C.qty, y, { align: "right" });
-      doc.text("KAINA BE PVM", C.price, y, { align: "right" }); doc.text("SUMA BE PVM", C.sum, y, { align: "right" });
-      y += 7;
-    };
-    const rule = () => { doc.setDrawColor(222, 226, 230); doc.setLineWidth(0.2); doc.line(ML, y - 3.2, ML + CW, y - 3.2); };
+    // ---- Lentelė ----
+    const NW = 80;                                         // pavadinimo plotis
+    const C = { qty: 113, price: 143, sum: 174, chk: W - MR - 5 };
+    const head = () => { font("bold", 9, INK); doc.text("Kiekis", C.qty, y, { align: "center" }); doc.text("Vieneto kaina", C.price, y, { align: "center" }); doc.text("Suma", C.sum, y, { align: "center" }); y += 5; };
     head();
     const qtyTxt = l => l.qty === "" || l.qty == null ? "" : fmtQ(l.qty) + " " + (l.unit || "");
+    const priceCell = (net, xc, yy, bold) => { font(bold ? "bold" : "normal", 9.5, INK); doc.text(money(net * vk), xc, yy, { align: "center" }); font("normal", 7.5, MUT); doc.text(money(net) + " be PVM", xc, yy + 4, { align: "center" }); };
+    const check = (cx, cy) => { doc.setDrawColor(...GREEN); doc.setLineWidth(0.5); doc.circle(cx, cy, 2.6, "S"); doc.setLineWidth(0.6); doc.line(cx - 1.2, cy, cx - 0.3, cy + 1); doc.line(cx - 0.3, cy + 1, cx + 1.3, cy - 1); };
+    // Pilkas fonas atkarpai (atkarpos dedamos viena po kitos, kraštai suapvalinti)
+    const seg = (y0, h, top, bottom) => {
+      doc.setFillColor(...CARD);
+      if (top && bottom) { doc.roundedRect(ML, y0, CW, h, 3, 3, "F"); return; }
+      if (top) { doc.roundedRect(ML, y0, CW, h, 3, 3, "F"); doc.rect(ML, y0 + h / 2, CW, h / 2 + 0.2, "F"); return; }
+      if (bottom) { doc.roundedRect(ML, y0, CW, h, 3, 3, "F"); doc.rect(ML, y0 - 0.2, CW, h / 2 + 0.2, "F"); return; }
+      doc.rect(ML, y0 - 0.2, CW, h + 0.4, "F");
+    };
+
     if (x.show_prices) {
       lines.forEach((l, i) => {
-        font("bold", 9.5); const nl = doc.splitTextToSize(`${i + 1}. ${l.name}`, 104);
-        font("normal", 8.5); const dl = l.desc ? doc.splitTextToSize(l.desc, 104) : [];
-        const h = nl.length * 4.6 + dl.length * 3.9 + 3;
-        if (need(h)) head();
-        font("bold", 9.5); doc.text(nl, C.name, y);
-        font("normal", 9.5); doc.text(qtyTxt(l), C.qty, y, { align: "right" });
-        doc.text(l.price === "" ? "" : money(l.price), C.price, y, { align: "right" });
-        doc.text(money(lineSum(l)), C.sum, y, { align: "right" });
-        if (dl.length) { font("normal", 8.5, MUT); doc.text(dl, C.name, y + nl.length * 4.6); }
-        y += h; rule();
+        font("normal", 10); const nl = doc.splitTextToSize(l.name, NW);
+        font("normal", 8); const dl = l.desc ? doc.splitTextToSize(l.desc, NW) : [];
+        const h = Math.max(13, 6 + nl.length * 4.6 + dl.length * 3.6 + 2);
+        if (need(h + 3)) head();
+        seg(y, h, true, true);
+        const ty = y + 6.5;
+        font("normal", 8.5, MUT); doc.text(String(i + 1), ML + 4, ty);
+        font("normal", 10, INK); doc.text(nl, ML + 10, ty);
+        if (dl.length) { font("normal", 8, MUT); doc.text(dl, ML + 10, ty + nl.length * 4.6); }
+        font("bold", 10, INK); doc.text(qtyTxt(l), C.qty, ty, { align: "center" });
+        if (l.price !== "") priceCell(DZ.num(l.price), C.price, ty, false);
+        priceCell(lineSum(l), C.sum, ty, true);
+        y += h + 3;
       });
     } else {
-      // Viena kaina: pagrindinė eilutė + „Įskaičiuota“
+      // Viena kaina: pagrindinė eilutė ir „Įskaičiuota“
       const kw = Number(o.power_kw) || 0;
-      font("bold", 10.5); const tl = doc.splitTextToSize(x.title || "Saulės elektrinė", 104);
-      need(tl.length * 5 + 4);
-      doc.text(tl, C.name, y);
-      font("normal", 9.5);
-      if (kw) { doc.text(fmtQ(kw) + " kW", C.qty, y, { align: "right" }); doc.text(money(calc.sub / kw) + "/kW", C.price, y, { align: "right" }); }
-      else doc.text("1 kompl.", C.qty, y, { align: "right" });
-      font("bold", 10.5); doc.text(money(calc.sub), C.sum, y, { align: "right" });
-      y += tl.length * 5 + 3;
-      font("bold", 8.5, MUT); need(6); doc.text("Įskaičiuota:", C.name, y); y += 5;
-      for (const l of lines) {
-        font("normal", 9.5); const nl = doc.splitTextToSize("•  " + l.name, 104);
-        font("normal", 8.5); const dl = l.desc ? doc.splitTextToSize(l.desc, 100) : [];
-        const h = nl.length * 4.5 + dl.length * 3.9 + 1.8;
-        if (need(h)) head();
-        font("normal", 9.5); doc.text(nl, C.name, y); doc.text(qtyTxt(l), C.qty, y, { align: "right" });
-        if (dl.length) { font("normal", 8.5, MUT); doc.text(dl, C.name + 4, y + nl.length * 4.5); }
-        y += h;
+      font("normal", 11); const tl = doc.splitTextToSize(x.title || "Saulės elektrinė", NW);
+      const h1 = Math.max(16, 8 + tl.length * 5);
+      need(h1 + 20);
+      seg(y, h1, true, !lines.length);
+      const ty = y + 7.5;
+      font("normal", 8.5, MUT); doc.text("1", ML + 4, ty);
+      font("normal", 11, INK); doc.text(tl, ML + 10, ty);
+      font("bold", 10.5, INK); doc.text(kw ? fmtQ(kw) + " kW" : "1 kompl.", C.qty, ty, { align: "center" });
+      priceCell(kw ? calc.sub / kw : calc.sub, C.price, ty, true);
+      priceCell(calc.sub, C.sum, ty, true);
+      check(C.chk, ty - 1);
+      y += h1;
+      if (lines.length) {
+        seg(y, 7, false, false);
+        font("normal", 8.5, MUT); doc.text("Įskaičiuota:", ML + 10, y + 4);
+        doc.setDrawColor(215, 218, 223); doc.setLineWidth(0.2); doc.line(ML + 32, y + 3, ML + 10 + NW, y + 3);
+        y += 7;
+        lines.forEach((l, i) => {
+          font("normal", 9); const nl = doc.splitTextToSize(l.name, NW);
+          font("normal", 7.5); const dl = l.desc ? doc.splitTextToSize(l.desc, NW - 4) : [];
+          const last = i === lines.length - 1;
+          const h = nl.length * 4.3 + dl.length * 3.4 + (last ? 6 : 3.5);
+          if (y + h > BOT) { seg(y, 0.1, false, true); doc.addPage(); y = 16; head(); }
+          seg(y, h, false, last);
+          font("normal", 9, INK); doc.text(nl, ML + 10, y + 4);
+          if (dl.length) { font("normal", 7.5, MUT); doc.text(dl, ML + 13, y + 4 + nl.length * 4.3); }
+          font("bold", 9.5, INK); doc.text(qtyTxt(l), C.qty, y + 4, { align: "center" });
+          y += h;
+        });
       }
-      y += 1.5; rule();
-    }
-
-    // Sumos
-    y += 3;
-    const tot = [["Suma be PVM", money(calc.sub)]];
-    if (calc.disc) tot.push(["Nuolaida", "− " + money(calc.disc)], ["Po nuolaidos", money(calc.net)]);
-    tot.push([`PVM ${fmtQ(x.vat)} %`, money(calc.vat)]);
-    need(tot.length * 5.5 + 14);
-    const TX = ML + 100;
-    for (const [a, b] of tot) { font("normal", 9.5, MUT); doc.text(a, TX, y); font("normal", 9.5); doc.text(b, C.sum, y, { align: "right" }); y += 5.5; }
-    doc.setFillColor(...ACC); doc.roundedRect(TX - 3, y - 3.5, ML + CW - TX + 3, 10, 1.5, 1.5, "F");
-    font("bold", 11.5, [255, 255, 255]); doc.text("Iš viso su PVM", TX, y + 3); doc.text(money(calc.total), C.sum, y + 3, { align: "right" });
-    y += 16;
-
-    // Pastabos
-    if (x.notes) {
-      font("bold", 9, MUT); need(10); doc.text("SĄLYGOS IR PASTABOS", ML, y); y += 5;
-      font("normal", 9.5);
-      for (const p of String(x.notes).split(/\r?\n/)) { for (const l of doc.splitTextToSize(p || " ", CW)) { need(4.8); doc.text(l, ML, y); y += 4.8; } }
       y += 4;
     }
 
-    // Parengė
-    need(18);
-    doc.setDrawColor(222, 226, 230); doc.setLineWidth(0.2); doc.line(ML, y, ML + CW, y); y += 6;
-    font("normal", 9, MUT); doc.text("Pasiūlymą parengė", ML, y);
-    font("bold", 10); doc.text(x.author || DZ.myName() || (c.director || ""), ML, y + 5);
-    font("normal", 9); doc.text([c.phone ? "Tel. " + c.phone : "", c.email].filter(Boolean).join("  ·  "), ML, y + 10);
-    font("normal", 9, MUT); doc.text("Iškilus klausimams – skambinkite, mielai patarsime.", ML + CW, y + 5, { align: "right" });
+    // ---- Sumos (dešinėje, kaip Wantly) ----
+    const BX = 118, BW = W - MR - BX;
+    const bh = 22 + (calc.disc ? 4.5 : 0);
+    need(bh + 10);
+    y += 2;
+    doc.setFillColor(...BEIGE); doc.roundedRect(BX, y, BW, bh, 4, 4, "F");
+    let by = y + 8;
+    font("normal", 14, INK); doc.text(money(calc.net) + " be PVM", BX + 6, by); by += 5.5;
+    font("normal", 7.5, INK);
+    if (calc.disc) { doc.text(`Nuolaida: − ${money(calc.disc)}`, BX + 6, by); by += 4.5; }
+    doc.text(`PVM (${fmtQ(x.vat)}%): ${money(calc.vat)}`, BX + 6, by); by += 5;
+    font("bold", 10, INK); doc.text("Suma: " + money(calc.total), BX + 6, by);
+    y += bh + 7;
+    font("normal", 10, MUT); doc.text(c.web || "www.elreda.lt", W - MR, y, { align: "right" });
+    y += 6;
+
+    // ---- Pastabos ----
+    if (x.notes) {
+      font("bold", 9, INK); need(10); doc.text("Sąlygos ir pastabos", ML, y); y += 5;
+      font("normal", 9, INK);
+      for (const p of String(x.notes).split(/\r?\n/)) { for (const l of doc.splitTextToSize(p || " ", CW)) { need(4.6); doc.text(l, ML, y); y += 4.6; } }
+      y += 5;
+    }
+
+    // ---- Reklaminis paveikslėlis: sumažinamas, kad tilptų į likusią vietą (bent 28 mm aukščio) ----
+    const FH = 30;                                          // apačios bloko aukštis
+    // Jei vietos nebelieka – paveikslėlis praleidžiamas (kad pasiūlymas tilptų į vieną puslapį)
+    const room = BOT - FH - 6 - y;
+    if (imgs.banner && room >= 28) {
+      const bh2 = Math.min(CW * 609 / 1600, room);
+      const bw2 = bh2 * 1600 / 609;
+      doc.addImage(imgs.banner, "JPEG", ML + (CW - bw2) / 2, y, bw2, bh2, undefined, "FAST");
+      y += bh2 + 6;
+    }
+
+    // ---- Apačia: parengė UAB ELREDA (prispaudžiama prie puslapio apačios) ----
+    if (y + FH > BOT + 6) { doc.addPage(); y = 16; }
+    y = Math.max(y, H - 6 - FH);
+    doc.setFillColor(...CARD); doc.rect(0, y - 3, W, Math.max(FH + 0.5, H - 2.2 - (y - 3)), "F");
+    font("bold", 10.5, INK); doc.text(co + " – „Dirbame Jums“", ML, y + 5);
+    font("normal", 9, INK); doc.text([c.email, c.phone].filter(Boolean).join("     "), ML, y + 10.5);
+    font("normal", 9, MUT); doc.text(doc.splitTextToSize("Jeigu kilo kokių nors papildomų klausimų, nedvejokite ir skambinkite.", 110), ML, y + 16);
+    if (imgs.logo) doc.addImage(imgs.logo, "PNG", W - MR - 46, y + 1, 46, 46 * 347 / 900);
 
     const n = doc.getNumberOfPages();
-    for (let i = 1; i <= n; i++) { doc.setPage(i); font("normal", 7.5, MUT); doc.text(`${c.name || "UAB Elreda"} · pasiūlymas Nr. ${x.no}${n > 1 ? ` · ${i} / ${n}` : ""}`, W / 2, H - 9, { align: "center" }); }
+    for (let i = 1; i <= n; i++) {
+      doc.setPage(i);
+      gradient(0, H - 2.2, W, 2.2);
+      if (n > 1) { font("normal", 7, MUT); doc.text(`${co} · pasiūlymas Nr. ${x.no} · ${i} / ${n}`, W / 2, H - 5, { align: "center" }); }
+    }
     return doc;
   };
 
