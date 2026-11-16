@@ -265,7 +265,6 @@
     if (!imgs) {
       imgs = {};
       try { imgs.logo = "data:image/png;base64," + await b64("img/elreda-logo.png"); } catch (_) {}
-      try { imgs.banner = "data:image/jpeg;base64," + await b64("img/banner.jpg"); } catch (_) {}
     }
   }
   // Įmonės pavadinimas be kabučių, didžiosiomis: „UAB ELREDA“
@@ -291,25 +290,29 @@
     const gradient = (x0, y0, w, h) => { const n = 120; for (let i = 0; i < n; i++) { const t = i / (n - 1); doc.setFillColor(...G1.map((a, k) => Math.round(a + (G2[k] - a) * t))); doc.rect(x0 + w * i / n, y0, w / n + 0.3, h, "F"); } };
 
     // ---- Antraštė: spalvų perėjimas, logotipas, kontaktai ----
-    const HB = 68;
+    const HB = 80;
     gradient(0, 0, W, HB);
     doc.setFillColor(...WHITE); doc.roundedRect(0, HB - 9, W, 30, 9, 9, "F");
-    if (imgs.logo) doc.addImage(imgs.logo, "PNG", ML, 7, 34, 34 * 347 / 900);
+    // Logotipas (elreda.lt, 400×363) – ant balto fono, kad matytųsi ant spalvų perėjimo
+    const LR = 400 / 363;
+    const logo = (lx, ly, lh) => { if (imgs.logo) doc.addImage(imgs.logo, "PNG", lx, ly, lh * LR, lh); };
+    doc.setFillColor(...WHITE); doc.roundedRect(ML, 5, 22 * LR + 6, 26, 4, 4, "F");
+    logo(ML + 3, 7, 22);
     font("normal", 7.5, WHITE);
     doc.text([c.hours || "I - V 9:00 - 18:00", c.address, c.email, c.phone].filter(Boolean).join("     "), W - MR, 11, { align: "right" });
     // Kliento eilutė ir pavadinimas
     font("bold", 12.5, WHITE);
     const who = [(o.client_name || o.name || "").toUpperCase(), o.power_kw ? fmtQ(o.power_kw) + " kW" : "", o.address].filter(Boolean).join(" ");
     const wl = doc.splitTextToSize(who, 118).slice(0, 3);
-    let hy = 30; doc.text(wl, ML, hy); hy += wl.length * 5.4 + 3;
+    let hy = 41; doc.text(wl, ML, hy); hy += wl.length * 5.4 + 3;
     font("bold", 19, WHITE); doc.text("Komercinis pasiūlymas", ML, hy + 1); hy += 7.5;
     font("bold", 8, WHITE); doc.text("Tiekėjas:", ML, hy); const tw = doc.getTextWidth("Tiekėjas: "); font("normal", 8, WHITE); doc.text(co, ML + tw + 0.5, hy);
     // Kortelė dešinėje: parengė UAB ELREDA
-    const KX = 136, KY = 24, KW = W - MR - KX, KH = 17;
+    const KX = 136, KY = 36, KW = W - MR - KX, KH = 17;
     doc.setFillColor(...WHITE); doc.roundedRect(KX, KY, KW, KH, 8.5, 8.5, "F");
-    if (imgs.logo) doc.addImage(imgs.logo, "PNG", KX + 5, KY + 4, 23, 23 * 347 / 900);
-    font("bold", 8.5, INK); doc.text(co, KX + 32, KY + 7.5);
-    font("normal", 8, MUT); doc.text("„Dirbame Jums“", KX + 32, KY + 12);
+    logo(KX + 7, KY + 2.5, 12);
+    font("bold", 8.5, INK); doc.text(co, KX + 24, KY + 7.5);
+    font("normal", 8, MUT); doc.text("„Dirbame Jums“", KX + 24, KY + 12);
     y = HB + 6;
 
     // ---- Pasiūlymo duomenys ----
@@ -412,16 +415,7 @@
       y += 5;
     }
 
-    // ---- Reklaminis paveikslėlis: sumažinamas, kad tilptų į likusią vietą (bent 28 mm aukščio) ----
     const FH = 30;                                          // apačios bloko aukštis
-    // Jei vietos nebelieka – paveikslėlis praleidžiamas (kad pasiūlymas tilptų į vieną puslapį)
-    const room = BOT - FH - 6 - y;
-    if (imgs.banner && room >= 28) {
-      const bh2 = Math.min(CW * 609 / 1600, room);
-      const bw2 = bh2 * 1600 / 609;
-      doc.addImage(imgs.banner, "JPEG", ML + (CW - bw2) / 2, y, bw2, bh2, undefined, "FAST");
-      y += bh2 + 6;
-    }
 
     // ---- Apačia: parengė UAB ELREDA (prispaudžiama prie puslapio apačios) ----
     if (y + FH > BOT + 6) { doc.addPage(); y = 16; }
@@ -430,7 +424,7 @@
     font("bold", 10.5, INK); doc.text(co + " – „Dirbame Jums“", ML, y + 5);
     font("normal", 9, INK); doc.text([c.email, c.phone].filter(Boolean).join("     "), ML, y + 10.5);
     font("normal", 9, MUT); doc.text(doc.splitTextToSize("Jeigu kilo kokių nors papildomų klausimų, nedvejokite ir skambinkite.", 110), ML, y + 16);
-    if (imgs.logo) doc.addImage(imgs.logo, "PNG", W - MR - 46, y + 1, 46, 46 * 347 / 900);
+    logo(W - MR - 22 * LR, y - 0.5, 22);
 
     const n = doc.getNumberOfPages();
     for (let i = 1; i <= n; i++) {
