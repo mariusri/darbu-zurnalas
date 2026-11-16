@@ -54,9 +54,23 @@
       const out = window.XLSX.write(wb, { bookType: "biff8", type: "array" });
       const who = only ? "_" + (list[0][1].replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, "").slice(0, 30)) : "";
       const name = "kontrahentai_centas" + who + "_" + DZ.today().replace(/-/g, "") + ".xls";
-      await DZ.saveFile(name, "application/vnd.ms-excel", new Blob([out], { type: "application/vnd.ms-excel" }));
+      const blob = new Blob([out], { type: "application/vnd.ms-excel" });
+      // Į Google Drive – į tą patį aplanką kaip kiti dokumentai (Darbų žurnalas → mėnuo → objektas)
+      let drive = "";
+      if (DZ.uploadFile && DZ.fnBase) {
+        DZ.toast("Įkeliama į Google Drive…");
+        try {
+          const o = only ? S.objects.find(x => x.id === only) : null;
+          const ents = o && DZ.objEntries ? DZ.objEntries(o.id) : [];
+          const last = ents.find(e => (e.photos || []).length) || ents[0];
+          await DZ.uploadFile(blob, "application/vnd.ms-excel", name.replace(/\.xls$/, ""), o ? o.name : "", last ? last.date : DZ.today());
+          drive = "ok";
+        } catch (e) { drive = (e && e.message) || String(e); }
+      }
+      await DZ.saveFile(name, "application/vnd.ms-excel", blob);
       const noCode = list.filter(r => !r[0]).length;
-      DZ.toast(`Eksportuota klientų: ${list.length}` + (noCode ? ` (be kodo: ${noCode})` : ""));
+      const msg = `Eksportuota klientų: ${list.length}` + (noCode ? ` (be kodo: ${noCode})` : "");
+      DZ.toast(drive === "ok" ? msg + " · įkelta į Google Drive" : drive ? msg + " · į Google Drive neįkelta: " + drive : msg, !!drive && drive !== "ok");
     } catch (e) { DZ.toast("Nepavyko: " + (e.message || e), true); }
   };
 })();
