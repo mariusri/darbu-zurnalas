@@ -14,10 +14,10 @@
   const title = s => s.toLowerCase().replace(/(^|[\s\-–.])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
   const clean = s => (s || "").replace(/\s{2,}.*$/, "").replace(/[\s,;]+$/, "").trim();
 
-  DZ.esoParse = raw => {
+  // m(regex ant „sulankstyto“ teksto) → grupės paimamos iš originalo tose pačiose vietose
+  const matcher = raw => {
     const text = raw.replace(/\r/g, "").replace(/[ \t]+\n/g, "\n");
     const f = fold(text);
-    // m(regex ant „sulankstyto“ teksto) → grupės paimamos iš originalo tose pačiose vietose
     const m = (re, from = 0) => {
       const r = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g"); r.lastIndex = from;
       const x = r.exec(f); if (!x) return null;
@@ -29,7 +29,13 @@
       }
       out.index = x.index; return out;
     };
-    const d = {};
+    return { text, f, m };
+  };
+
+  DZ.esoParse = raw => {
+    const { text, f, m } = matcher(raw);
+    if (/DEKLARACIJA/i.test(f) && /keitiklio/i.test(f) && !/PRI[JI]UNGIMO\s+SALYGOS\s+NR/i.test(f)) return DZ.esoParseDecl(raw);
+    const d = { kind: "salygos" };
     let x;
     if ((x = m(/PRI[JI]UNGIMO\s+SALYGOS\s+NR\.?\s*([A-Z]{2,4}\s?\d{2}\s?-\s?\d{3,})/i))) d.no = x[1].replace(/\s/g, "").toUpperCase();
     if ((x = m(/Parengta:?\s*(\d{4}-\d{2}-\d{2})/i))) d.date = x[1];
@@ -61,6 +67,55 @@
     if ((x = m(/spintoje[^\n]*?\b((?:KS|KAS|KSK|AS)\s?-\s?\d+[A-Z]?)/i))) d.cabinet = x[1].replace(/\s/g, "");
     if ((x = m(/transformatorines\s+([A-Z]{1,4}\s?-\s?\d+[A-Z0-9\-]*)/i))) d.substation = x[1].replace(/\s/g, "");
     if ((x = m(/(trifazi|vienfazi)\s+\W?\s*([A-D])\s*\W?\s+charakteristikos\s+(\d+)\s*A\b/i))) d.breaker = `${x[1].toLowerCase().startsWith("t") ? "3P" : "1P"} ${x[2].toUpperCase()}${x[3]} A`;
+    return d;
+  };
+
+  // Rangovo deklaracija apie iki 100 kW elektrinės įrengimą: moduliai, keitiklis, galios
+  const watts = model => { const w = (model || "").match(/(?:^|[\s\-])(\d{3})(?:\s?W|[A-Z]{0,3})?\s*$/i); return w && +w[1] >= 200 && +w[1] <= 900 ? +w[1] : null; };
+  DZ.esoParseDecl = raw => {
+    const { text, f, m } = matcher(raw);
+    const d = { kind: "deklaracija" };
+    let x;
+    const di = f.search(/DEKLARACIJA/i);
+    if ((x = m(/(20\d\d-\d\d-\d\d)/, di >= 0 ? di : 0))) d.date = x[1];
+    if ((x = m(/Objekto\s+pavadinimas\s+ir\s+adresas\s+([^\n]+)(\n(?!\s*Objekto\s+savininkas)[^\n:]{3,60}(?=\n))?/i))) {
+      const v = (x[1] + (x[2] ? " " + x[2].trim() : "")).replace(/\s+/g, " ").replace(/[,\s]+$/, "");
+      d.object = v; const parts = v.split(/,\s*/); d.address = parts.length > 2 ? parts.slice(1).join(", ") : v;
+    }
+    if ((x = m(/Objekto\s+savininkas[^\n]*?\s{2,}(\S[^\n]+)/i))) d.owner = title(clean(x[1]));
+    if ((x = m(/salygu\s+data[^\n]*?(\d{4}-\d{2}-\d{2})/i))) d.cond_date = x[1];
+    if ((x = m(/salygu\s+numeris[^\n]*?\)\s+([A-Z]{0,4}\s?\d{2}\s?-\s?\d{3,})/i))) d.cond_no = x[1].replace(/\s/g, "");
+    // Kiekvienas įtampos keitiklis – atskira dalis
+    const secs = [], re = /Itampos\s+keitiklio\s+Nr\.?\s*(\d+)/gi; let s;
+    while ((s = re.exec(f))) secs.push(s.index);
+    const units = secs.map((a, i) => {
+      const sub = matcher(text.slice(a, i + 1 < secs.length ? secs[i + 1] : f.search(/Bendra\s+objekto/i) > a ? f.search(/Bendra\s+objekto/i) : text.length));
+      const u = {}; let y;
+      if ((y = sub.m(/Fotomoduliu\s+tipas[^\n]*?\)\s+([^\n]+)/i))) u.module = clean(y[1]);
+      if ((y = sub.m(/keitiklio\s+modelis\s*\(gamintojas\)\s+([^\n]+)/i))) u.inverter = clean(y[1]);
+      if ((y = sub.m(/irengtoji\s+galia,?\s*kW\s+([\d.,]+)(?:\s+([\d.,]+))?/i))) u.installed_kw = num(y[2] ?? y[1]);
+      if ((y = sub.m(/leistina\s+generuoti\s+galia,?\s*kW\s+([\d.,]+)(?:\s+([\d.,]+))?/i))) u.gen_kw = num(y[2] ?? y[1]);
+      if ((y = sub.m(/keitiklio\s+vardine\s+aktyvioji\s+galia,?\s*kW\s+([\d.,]+)/i))) u.inverter_kw = num(y[1]);
+      if ((y = sub.m(/prijungiami[^\n]*?\s{2,}(\S[^\n]+)/i))) u.source = clean(y[1]);
+      return u;
+    }).filter(u => u.module || u.inverter);
+    if (units.length) {
+      const mods = [...new Set(units.map(u => u.module).filter(Boolean))], invs = [...new Set(units.map(u => u.inverter).filter(Boolean))];
+      d.module_type = mods.join(" + "); d.inverter = invs.join(" + ");
+      d.inverter_count = units.filter(u => u.inverter).length;
+      d.installed_kw = units.reduce((t, u) => t + (u.installed_kw || 0), 0) || null;
+      d.inverter_kw = units.reduce((t, u) => t + (u.inverter_kw || 0), 0) || null;
+      d.gen_kw = units.reduce((t, u) => t + (u.gen_kw || 0), 0) || null;
+      d.module_w = mods.length === 1 ? watts(mods[0]) : null;
+      if (d.module_w && d.installed_kw) { const c = d.installed_kw * 1000 / d.module_w; if (Math.abs(c - Math.round(c)) < 0.05) d.module_count = Math.round(c); }
+      d.units = units;
+    }
+    // Bendra lentelė: suminė įrengtoji, leistina generuoti, keitiklių, Pmax, leistina naudoti
+    const bi = f.search(/Bendra\s+objekto/i);
+    if (bi >= 0 && (x = m(/\n\s*([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)/, bi))) {
+      d.installed_kw = num(x[1]) ?? d.installed_kw; d.gen_kw = num(x[2]) ?? d.gen_kw; d.inverter_kw = num(x[3]) ?? d.inverter_kw; d.pmax_kw = num(x[4]); d.use_kw = num(x[5]);
+      if (d.module_w && d.installed_kw && !d.module_count) { const c = d.installed_kw * 1000 / d.module_w; if (Math.abs(c - Math.round(c)) < 0.05) d.module_count = Math.round(c); }
+    }
     return d;
   };
 
@@ -131,17 +186,22 @@
   // ---------- Objekto redagavimo lange ----------
   DZ.esoPending = null;
   DZ.esoButtonHtml = () => `<div class="eso-import">
-      <label class="btn eso-btn"><input type="file" id="eso-file" accept="application/pdf,.pdf,image/*" hidden>📄 Užpildyti iš ESO prijungimo sąlygų</label>
-      <p class="note" id="eso-status">PDF arba dokumento nuotrauka. Laukus galėsite pataisyti prieš išsaugant.</p>
+      <label class="btn eso-btn"><input type="file" id="eso-file" accept="application/pdf,.pdf,image/*" hidden>📄 Užpildyti iš ESO sąlygų arba deklaracijos</label>
+      <p class="note" id="eso-status">ESO prijungimo sąlygos arba rangovo deklaracija – PDF ar nuotrauka. Laukus galėsite pataisyti prieš išsaugant.</p>
     </div>`;
   const FIELDS = [
-    ["o-name", d => d.client || d.address, "Pavadinimas"],
+    ["o-name", d => d.client || d.owner || d.address, "Pavadinimas"],
     ["o-addr", d => d.address, "Adresas"],
-    ["o-cname", d => d.client, "Klientas"],
+    ["o-cname", d => d.client || d.owner, "Klientas"],
     ["o-cphone", d => d.phone, "Telefonas"],
     ["o-cmail", d => d.email, "El. paštas"],
-    ["o-kw", d => d.gen_kw ?? d.installed_kw, "Galia"],
-    ["o-cno", d => d.no, "Sutarties Nr."]
+    ["o-kw", d => d.kind === "deklaracija" ? d.installed_kw : (d.gen_kw ?? d.installed_kw), "Galia", d => d.kind === "deklaracija"],
+    ["o-cno", d => d.no, "Sutarties Nr."],
+    // Iš deklaracijos – pagrindas aktui, todėl perrašoma
+    ["o-mtype", d => d.module_type, "Modulių tipas", true],
+    ["o-mcount", d => d.module_count, "Modulių kiekis", true],
+    ["o-inv", d => d.inverter, "Inverteris", true],
+    ["o-icount", d => d.inverter_count, "Inverterių kiekis", true]
   ];
   DZ.esoBind = () => {
     DZ.esoPending = null;
@@ -154,19 +214,29 @@
       try {
         const text = await DZ.esoRead(file, progress);
         const d = DZ.esoParse(text);
-        if (!d.no && !d.client && !d.address) throw new Error("Dokumente neradau prijungimo sąlygų duomenų. Ar tai ESO prijungimo sąlygos? Jei nuotrauka – nufotografuokite pirmą lapą tiesiai ir ryškiai.");
-        const filled = [], kept = [];
-        for (const [id, get, label] of FIELDS) {
+        const decl = d.kind === "deklaracija";
+        if (decl ? !(d.module_type || d.inverter) : !(d.no || d.client || d.address)) throw new Error("Dokumente neradau reikalingų duomenų. Tinka ESO prijungimo sąlygos arba rangovo deklaracija. Jei nuotrauka – nufotografuokite pirmą lapą tiesiai ir ryškiai.");
+        const filled = [], changed = [], kept = [];
+        for (const [id, get, label, force] of FIELDS) {
           const el = $("#" + id), val = get(d);
           if (!el || val == null || val === "") continue;
-          if (!el.value.trim()) { el.value = val; el.classList.add("eso-filled"); filled.push(label); }
-          else if (String(el.value.trim()).toLowerCase() !== String(val).toLowerCase()) kept.push(`${label}: ${val}`);
+          const cur = el.value.trim();
+          if (!cur) { el.value = val; el.classList.add("eso-filled"); filled.push(label); }
+          else if (cur.toLowerCase() !== String(val).toLowerCase() && !(DZ.num(cur) && DZ.num(cur) === Number(val))) {
+            if (typeof force === "function" ? force(d) : force) { el.value = val; el.classList.add("eso-filled"); changed.push(`${label}: ${cur} → ${val}`); }
+            else kept.push(`${label}: ${val}`);
+          }
         }
+        // Saugoma kartu su ankstesniais ESO duomenimis (sąlygos + deklaracija)
+        const obj = S.view === "object" ? S.objects.find(x => x.id === S.objectId) : null;
+        const prev = obj && obj.eso && typeof obj.eso === "object" ? obj.eso : {};
         d.file = file.name || "";
-        DZ.esoPending = { data: d, file };
-        st.innerHTML = `<b>Nuskaityta${d.no ? " " + esc(d.no) : ""}.</b> ${filled.length ? "Užpildyta: " + esc(filled.join(", ").replace(/\.$/, "")) + "." : "Laukai jau buvo užpildyti."}` +
+        const merged = decl ? Object.assign({}, prev, { decl: d }) : Object.assign({}, d, prev.decl ? { decl: prev.decl } : {});
+        DZ.esoPending = { data: merged, doc: d, file };
+        st.innerHTML = `<b>Nuskaityta ${decl ? "deklaracija" : "ESO sąlygos"}${d.no || d.cond_no ? " " + esc(d.no || d.cond_no) : ""}.</b> ${filled.length ? "Užpildyta: " + esc(filled.join(", ")) + "." : ""}` +
+          (changed.length ? `<br>Pakeista pagal deklaraciją: ${esc(changed.join("; "))}.` : "") +
           (kept.length ? `<br>Palikta kaip buvo (dokumente kitaip): ${esc(kept.join("; "))}.` : "") +
-          `<br>Kiti ESO duomenys (leistina galia, įvadas, galiojimas) bus išsaugoti objekto kortelėje, o dokumentas – prie objekto dokumentų.`;
+          (decl ? `<br>Moduliai ir inverteris su galia pateks į aktą.` : `<br>Kiti ESO duomenys (leistina galia, įvadas, galiojimas) bus išsaugoti objekto kortelėje.`) + ` Dokumentas bus įkeltas prie objekto dokumentų.`;
       } catch (e) {
         st.classList.add("err");
         st.textContent = /fetch|network|load|Failed/i.test(e.message || "") ? "Nepavyko įkelti skaitymo įrankio – reikia interneto ryšio." : (e.message || String(e));
@@ -180,13 +250,14 @@
     try {
       const isPdf = /pdf/i.test(p.file.type) || /\.pdf$/i.test(p.file.name || "");
       const blob = p.file;
-      const name = "ESO_salygos_" + (p.data.no || "").replace(/[^\w\-]/g, "");
+      const doc = p.doc || p.data, decl = doc.kind === "deklaracija";
+      const name = (decl ? "Deklaracija_" : "ESO_salygos_") + (doc.no || doc.cond_no || "").replace(/[^\w\-]/g, "");
       const path = await DZ.uploadFile(blob, isPdf ? "application/pdf" : (blob.type || "image/jpeg"), name, o.name, DZ.today());
       if (DZ.isAdmin()) {
-        const r = await DZ.sb.from("object_docs").insert({ object_id: o.id, path, type: "eso", mime: isPdf ? "application/pdf" : (blob.type || "image/jpeg"), name: name + (isPdf ? ".pdf" : ".jpg"), date: p.data.date || DZ.today() }).select().single();
+        const r = await DZ.sb.from("object_docs").insert({ object_id: o.id, path, type: "eso", mime: isPdf ? "application/pdf" : (blob.type || "image/jpeg"), name: name + (isPdf ? ".pdf" : ".jpg"), date: doc.date || DZ.today() }).select().single();
         if (!r.error && S.docs) S.docs.push(r.data);
       }
-      DZ.toast("ESO sąlygos įkeltos į Google Drive");
+      DZ.toast((decl ? "Deklaracija" : "ESO sąlygos") + " įkeltos į Google Drive");
     } catch (e) { DZ.toast("ESO dokumento į Google Drive įkelti nepavyko: " + (e.message || e), true); }
     DZ.render();
   };
@@ -194,6 +265,7 @@
   // ---------- Objekto kortelėje ----------
   DZ.objEsoHtml = o => {
     const d = o.eso; if (!d || typeof d !== "object" || !Object.keys(d).length) return "";
+    const k = d.decl || null;
     const kw = v => v == null ? "" : String(v).replace(".", ",") + " kW";
     const exp = d.valid_until && d.valid_until < DZ.today();
     const rows = [
@@ -205,9 +277,12 @@
       ["Įvadas", [d.cabinet, d.substation ? "nuo " + d.substation : "", d.breaker ? "jungiklis " + d.breaker : ""].filter(Boolean).join(", ")],
       ["Hibridinė", d.hybrid || ""],
       ["Projekto Nr.", d.project_no || ""],
-      ["Objektas", d.object_title || ""]
+      ["Objektas", d.object_title || ""],
+      ["Deklaracija", k ? (k.date ? DZ.shortDate(k.date) : "pateikta") : ""],
+      ["Moduliai", k && k.module_type ? [k.module_count ? k.module_count + " vnt." : "", k.module_type, k.installed_kw ? "(" + kw(k.installed_kw) + ")" : ""].filter(Boolean).join(" ") : ""],
+      ["Inverteris", k && k.inverter ? [k.inverter_count > 1 ? k.inverter_count + " vnt." : "", k.inverter, k.inverter_kw ? "(" + kw(k.inverter_kw) + ")" : ""].filter(Boolean).join(" ") : ""]
     ].filter(r => r[1]);
-    return `<div class="card eso-card"><span class="lbl">ESO prijungimo sąlygos</span>
+    return `<div class="card eso-card"><span class="lbl">${d.no || !k ? "ESO prijungimo sąlygos" : "ESO deklaracija"}</span>
       <table class="mat-table"><tbody>${rows.map(([a, b]) => `<tr${a === "Galioja iki" && exp ? ' class="neg"' : ""}><td class="muted">${esc(a)}</td><td>${esc(b)}</td></tr>`).join("")}</tbody></table></div>`;
   };
 })();
