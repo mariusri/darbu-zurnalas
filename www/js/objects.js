@@ -86,6 +86,7 @@
         </div>
         ${DZ.objEsoHtml ? DZ.objEsoHtml(o) : ""}
         ${DZ.objCrmHtml ? DZ.objCrmHtml(o) : ""}
+        ${DZ.objOffersHtml ? DZ.objOffersHtml(o) : ""}
         ${DZ.objPayHtml ? DZ.objPayHtml(o) : ""}
         ${DZ.objWarrantyHtml ? DZ.objWarrantyHtml(o) : ""}
         ${DZ.objDocsHtml ? DZ.objDocsHtml(o) : ""}

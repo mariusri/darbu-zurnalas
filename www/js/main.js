@@ -30,7 +30,7 @@
     DZ.go(b.dataset.tab);
   });
 
-  const PARENT = { search: "day", object: "objects", users: "day", catalog: "day", settings: "day" };
+  const PARENT = { search: "day", object: "objects", users: "day", catalog: "day", settings: "day", "offer-tpls": "day" };
   DZ.actions["back"] = () => DZ.go(PARENT[S.view] || "day");
 
   function onBack() {

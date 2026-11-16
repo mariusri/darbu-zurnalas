@@ -14,7 +14,7 @@
       <div class="who"><b>${esc(p.name || "")}</b><br>${esc(S.user ? S.user.email : "")}<br><span class="pill">${esc(DZ.ROLES[p.role] || "")}</span></div>
       ${DZ.isAdmin() ? `<button data-act="menu-go" data-v="users">Vartotojai ir rolės${waiting ? ` <span class="badge">${waiting}</span>` : ""}</button>` : ""}
       ${DZ.isLead() ? `<button data-act="crew">Darbuotojų sąrašas</button><button data-act="menu-go" data-v="catalog">Prekių katalogas</button>` : ""}
-      ${DZ.isAdmin() ? `<button data-act="menu-go" data-v="settings">Įmonės nustatymai</button>` : ""}
+      ${DZ.isAdmin() ? `<button data-act="menu-go" data-v="offer-tpls">Pasiūlymų šablonai</button><button data-act="menu-go" data-v="settings">Įmonės nustatymai</button>` : ""}
       <button data-act="profile-edit">Mano profilis</button>
       <button data-act="pw-change">Keisti slaptažodį</button>
       <button data-act="refresh">Atnaujinti duomenis</button>
