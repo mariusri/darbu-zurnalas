@@ -84,6 +84,7 @@
             <button class="btn primary" data-act="pdf-open" data-id="${esc(o.id)}">PDF aktas</button>
           </div>
         </div>
+        ${DZ.objEsoHtml ? DZ.objEsoHtml(o) : ""}
         ${DZ.objCrmHtml ? DZ.objCrmHtml(o) : ""}
         ${DZ.objPayHtml ? DZ.objPayHtml(o) : ""}
         ${DZ.objWarrantyHtml ? DZ.objWarrantyHtml(o) : ""}
@@ -118,6 +119,7 @@
     const inp = (id, label, val, type = "text", extra = "") => `<label class="field"><span class="lbl">${label}</span><input id="${id}" type="${type}" value="${esc(val ?? "")}" ${extra}></label>`;
     DZ.openSheet(`
       <h2>${o ? "Redaguoti objektą" : "Naujas objektas"}</h2>
+      ${DZ.esoButtonHtml ? DZ.esoButtonHtml() : ""}
       ${inp("o-name", "Pavadinimas *", d.name, "text", 'required autocomplete="off"')}
       ${inp("o-addr", "Adresas", d.address)}
       <div class="row2">${inp("o-cname", "Klientas", d.client_name)}${inp("o-cphone", "Telefonas", d.client_phone, "tel")}</div>
@@ -135,6 +137,7 @@
         <button type="button" class="btn" data-act="close">Atšaukti</button>
         <button type="submit" class="btn primary">Išsaugoti</button>
       </div>`, { form: true, id: "obj-form" });
+    if (DZ.esoBind) DZ.esoBind();
     $("#obj-form").addEventListener("submit", async ev => {
       ev.preventDefault();
       const err = $("#o-err");
@@ -144,6 +147,7 @@
         power_kw: v("o-kw") ? DZ.num(v("o-kw")) : null, module_type: v("o-mtype"), module_count: v("o-mcount") ? Math.round(DZ.num(v("o-mcount"))) : null, inverter: v("o-inv"), inverter_count: v("o-icount") ? Math.round(DZ.num(v("o-icount"))) : null, status: v("o-status"), notes: $("#o-notes").value.trim(), updated_at: new Date().toISOString()
       };
       if ($("#o-cdate")) { row.contract_no = v("o-cno"); row.contract_date = v("o-cdate") || null; row.contract_sum = v("o-csum") ? DZ.num(v("o-csum")) : null; }
+      if (DZ.esoPending) row.eso = DZ.esoPending.data;
       if ($("#o-doffer")) { row.offer_date = v("o-doffer") || null; row.install_date = v("o-dinst") || null; row.done_date = v("o-ddone") || null; }
       // Pakeitus būseną – tos dienos data kalendoriui (jei dar neįrašyta)
       const STAGE = { pasiulymas: "offer_date", montavimas: "install_date", baigta: "done_date" }[row.status];
@@ -160,6 +164,7 @@
       const i = S.objects.findIndex(x => x.id === res.data.id);
       if (i >= 0) S.objects[i] = res.data; else S.objects.push(res.data);
       DZ.toast("Išsaugota");
+      if (DZ.esoPending && DZ.esoAfterSave) DZ.esoAfterSave(res.data);
       if (!o) DZ.go("object", { objectId: res.data.id }); else DZ.loadAll();
     });
     setTimeout(() => { if (!o) $("#o-name").focus(); }, 50);
