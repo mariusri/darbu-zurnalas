@@ -17,6 +17,7 @@
         <h3>${esc(t.title || "Užduotis")}</h3>
       </div>
       ${oname ? (DZ.isLead() ? `<button class="linkbtn" data-act="obj-open" data-id="${esc(t.object_id)}">📍 ${esc(oname)}</button>` : `<span class="note">📍 ${esc(oname)}</span>`) : ""}
+      ${t.object_id ? DZ.objAddrHtml(t.object_id) : ""}
       ${t.description ? `<p class="work">${esc(t.description)}</p>` : ""}
       ${(t.assignees || []).length ? `<div class="chips">${t.assignees.map(n => `<span class="chip${DZ.isMe(n) ? " me" : ""}">${esc(n)}</span>`).join("")}</div>` : ""}
       <div class="seg" role="group" aria-label="Būsena">${Object.entries(DZ.TASK_STATUS).map(([k, v]) => `<button data-act="task-status" data-id="${esc(t.id)}" data-v="${k}" aria-pressed="${t.status === k}">${v}</button>`).join("")}</div>

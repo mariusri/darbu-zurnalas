@@ -206,6 +206,12 @@
   DZ.entryObjectId = e => e.objectId || (DZ.findObject(e.object) || {}).id || null;
   DZ.findProduct = name => { const n = DZ.norm(name); return n ? state.products.find(p => DZ.norm(p.name) === n) || null : null; };
   DZ.matPrice = m => (m.price != null && m.price !== "" ? Number(m.price) : ((DZ.findProduct(m.name) || {}).price ?? null));
+  // Objekto adresas ir mygtukas „Žemėlapis“ (darbuotojams – užduotyse ir dienos įrašuose)
+  DZ.mapUrl = addr => "https://maps.google.com/?q=" + encodeURIComponent(addr);
+  DZ.objAddrHtml = id => {
+    const o = id && state.objects.find(x => x.id === id);
+    return o && o.address ? `<div class="map-row"><span class="note">${esc(o.address)}</span><a class="btn small" href="${esc(DZ.mapUrl(o.address))}" target="_blank" rel="noopener">Žemėlapis</a></div>` : "";
+  };
   DZ.hourRate = () => DZ.num((state.settings.hour_rate || {}).value);
   DZ.company = () => state.settings.company || { name: "UAB Elreda" };
 

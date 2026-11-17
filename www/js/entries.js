@@ -16,6 +16,7 @@
         ${eh ? `<span class="chip">${fmtQ(eh)} val.</span>` : ""}
       </div>
       <div class="entry-body">
+        ${oid && !opts.noObjLink ? DZ.objAddrHtml(oid) : ""}
         ${ws.length ? `<div><span class="lbl">Dirbo</span><table class="mat-table"><tbody>${ws.map(w => `<tr><td>${esc(w.name)}</td><td class="t">${w.from && w.to ? esc(w.from) + "–" + esc(w.to) : ""}</td><td class="q">${DZ.workerHours(w) ? fmtQ(DZ.workerHours(w)) + " val." : ""}</td></tr>`).join("")}</tbody></table></div>` : ""}
         ${e.work ? `<p class="work">${esc(e.work)}</p>` : ""}
         ${mats.length ? `<div><span class="lbl">Medžiagos</span>${DZ.matTable(mats)}</div>` : ""}

@@ -376,3 +376,8 @@ input.eso-filled { border-color: #2f7a3e; box-shadow: 0 0 0 2px rgba(47,122,62,.
   .of-row .of-desc { grid-column: 1 / 4; grid-row: 4; }
   .of-row .of-sum { grid-column: 2 / 4; grid-row: 3; text-align: right; }
 }
+
+/* Objekto adresas su mygtuku „Žemėlapis“ (užduotys, dienos įrašai) */
+.map-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.map-row .note { min-width: 0; overflow-wrap: anywhere; flex: 1 1 160px; }
+.map-row .btn { flex-shrink: 0; }
