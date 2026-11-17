@@ -45,7 +45,7 @@
          o.inverter ? { name: "Inverteris " + o.inverter, qty: (o.inverter_count || 1) + " vnt." } : null].filter(Boolean);
     return { offer, calc, total, net, vat, vatSum: r2(total - net), lines, place: PLACE(offer && offer.title) };
   }
-  const defaults = () => Object.assign({ days: 30, w_mod: 12, w_pow: 25, w_inv: 10, w_bat: 10, w_mount: 10, w_work: 5, advance: 30, reply: 10 }, S.settings.contract || {});
+  const defaults = () => Object.assign({ days: 30, w_mod: 12, w_pow: 25, w_inv: 5, w_bat: 10, w_mount: 10, w_work: 5, advance: 30, reply: 10 }, S.settings.contract || {});
 
   // ---------- Langas ----------
   DZ.actions["contract-open"] = t => {
