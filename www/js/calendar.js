@@ -84,9 +84,12 @@
   // ---------- Dokumentai (tik administratoriams; lentelė object_docs) ----------
   S.docs = [];
   DZ.loadDocs = async () => {
-    if (!DZ.isAdmin() || !DZ.sb) { S.docs = []; return; }
+    if (!DZ.sb || !DZ.role()) { S.docs = []; return; }
     try {
-      const { data, error } = await DZ.sb.from("object_docs").select("*").order("created_at", { ascending: true });
+      // Administratorius – visi dokumentai; kiti – tik ESO sąlygos (sutartys, aktai, pasiūlymai jiems nerodomi)
+      let q = DZ.sb.from("object_docs").select("*").order("created_at", { ascending: true });
+      if (!DZ.isAdmin()) q = q.eq("type", "eso");
+      const { data, error } = await q;
       if (!error && data) S.docs = data;
     } catch (_) {}
   };
@@ -161,6 +164,15 @@
   DZ.actions["doc-view"] = async t => {
     const docs = objDocs(t.dataset.id); const d = docs[+t.dataset.i]; if (!d) return;
     if (!isPdf(d)) { const imgs = docs.filter(x => !isPdf(x)); DZ.openLb(imgs.map(x => x.path), imgs.indexOf(d)); return; }
+    DZ.openPdfDoc(d);
+  };
+  // ESO sąlygų dokumentas iš ESO kortelės (mato visi, kas mato objektą)
+  DZ.esoDocs = id => S.docs.filter(d => d.object_id === id && d.type === "eso");
+  DZ.actions["eso-doc"] = t => {
+    const d = S.docs.find(x => x.id === t.dataset.doc); if (!d) return;
+    if (isPdf(d)) DZ.openPdfDoc(d); else DZ.openLb([d.path], 0);
+  };
+  DZ.openPdfDoc = async d => {
     // PDF: atsisiųsti ir atidaryti (telefone – per „Bendrinti“ į PDF peržiūros programą)
     DZ.toast("Atidaromas PDF…");
     try {

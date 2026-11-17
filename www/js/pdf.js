@@ -37,6 +37,7 @@
   };
 
   DZ.actions["pdf-open"] = t => {
+    if (!DZ.isAdmin()) return;                 // aktai – tik administratoriams
     const o = S.objects.find(x => x.id === t.dataset.id); if (!o) return;
     const d = DZ.actDefaults(o);
     const c = DZ.company();

@@ -283,6 +283,7 @@
       ["Inverteris", k && k.inverter ? [k.inverter_count > 1 ? k.inverter_count + " vnt." : "", k.inverter, k.inverter_kw ? "(" + kw(k.inverter_kw) + ")" : ""].filter(Boolean).join(" ") : ""]
     ].filter(r => r[1]);
     return `<div class="card eso-card"><span class="lbl">${d.no || !k ? "ESO prijungimo sąlygos" : "ESO deklaracija"}</span>
-      <table class="mat-table"><tbody>${rows.map(([a, b]) => `<tr${a === "Galioja iki" && exp ? ' class="neg"' : ""}><td class="muted">${esc(a)}</td><td>${esc(b)}</td></tr>`).join("")}</tbody></table></div>`;
+      <table class="mat-table"><tbody>${rows.map(([a, b]) => `<tr${a === "Galioja iki" && exp ? ' class="neg"' : ""}><td class="muted">${esc(a)}</td><td>${esc(b)}</td></tr>`).join("")}</tbody></table>
+      ${DZ.esoDocs && DZ.esoDocs(o.id).length ? `<div class="row-end">${DZ.esoDocs(o.id).map(x => `<button class="btn" data-act="eso-doc" data-doc="${esc(x.id)}">${/deklar/i.test(x.name || "") ? "Deklaracija" : "ESO sąlygos"} (${/pdf/i.test(x.mime || "") ? "PDF" : "nuotrauka"})</button>`).join("")}</div>` : ""}</div>`;
   };
 })();

@@ -75,7 +75,7 @@
             ${row("Galia", o.power_kw ? fmtQ(o.power_kw) + " kW" : "")}
             ${row("Saulės moduliai", [o.module_count ? o.module_count + " vnt." : "", esc(o.module_type)].filter(Boolean).join(" "))}
             ${row("Inverteris", [o.inverter_count ? o.inverter_count + " vnt." : "", esc(o.inverter)].filter(Boolean).join(" "))}
-            ${row("Sutartis", [o.contract_no ? "Nr. " + esc(o.contract_no) : "", o.contract_date ? DZ.shortDate(o.contract_date) : "", o.contract_sum ? DZ.money(o.contract_sum) : ""].filter(Boolean).join(" · "))}
+            ${DZ.isAdmin() ? row("Sutartis", [o.contract_no ? "Nr. " + esc(o.contract_no) : "", o.contract_date ? DZ.shortDate(o.contract_date) : "", o.contract_sum ? DZ.money(o.contract_sum) : ""].filter(Boolean).join(" · ")) : ""}
             ${DZ.isAdmin() ? row("Datos", [o.offer_date ? "pasiūlymas " + DZ.shortDate(o.offer_date) : "", o.install_date ? "montavimas " + DZ.shortDate(o.install_date) : "", o.done_date ? "atlikta " + DZ.shortDate(o.done_date) : ""].filter(Boolean).join(" · ")) : ""}
           </tbody></table>
           ${o.notes ? `<p class="work">${esc(o.notes)}</p>` : ""}
@@ -84,7 +84,7 @@
             ${DZ.isLead() ? `<button class="btn" data-act="obj-edit" data-id="${esc(o.id)}">Redaguoti</button>` : ""}
             ${DZ.isAdmin() && o.client_name ? `<button class="btn" data-act="centas-export" data-id="${esc(o.id)}">Į Centą</button>` : ""}
             ${DZ.isAdmin() ? `<button class="btn" data-act="contract-open" data-id="${esc(o.id)}">Sutartis</button>` : ""}
-            <button class="btn primary" data-act="pdf-open" data-id="${esc(o.id)}">PDF aktas</button>
+            ${DZ.isAdmin() ? `<button class="btn primary" data-act="pdf-open" data-id="${esc(o.id)}">PDF aktas</button>` : ""}
           </div>
         </div>
         ${DZ.objEsoHtml ? DZ.objEsoHtml(o) : ""}
@@ -104,7 +104,7 @@
             <tr><td>Medžiagos${st.noPrice ? ` <span class="muted">(${st.noPrice} be kainos)</span>` : ""}</td><td class="q">${DZ.money(st.mat)}</td></tr>
             <tr><td>Darbas${rate ? ` <span class="muted">(${fmtQ(st.hours)} val. × ${DZ.money(rate)})</span>` : ` <span class="muted">(įkainis nenustatytas)</span>`}</td><td class="q">${DZ.money(st.labour)}</td></tr>
             <tr class="strong"><td>Savikaina</td><td class="q">${DZ.money(st.cost)}</td></tr>
-            ${o.contract_sum ? `<tr><td>Sutarties suma</td><td class="q">${DZ.money(o.contract_sum)}</td></tr>
+            ${o.contract_sum && DZ.isAdmin() ? `<tr><td>Sutarties suma</td><td class="q">${DZ.money(o.contract_sum)}</td></tr>
             <tr class="strong ${o.contract_sum - st.cost < 0 ? "neg" : "pos"}"><td>Skirtumas</td><td class="q">${DZ.money(o.contract_sum - st.cost)}</td></tr>` : ""}
           </tbody></table>
         </div>
@@ -132,7 +132,7 @@
       ${inp("o-kw", "Galia, kW", d.power_kw, "number", 'step="any" inputmode="decimal"')}
       <div class="row-q">${inp("o-mtype", "Saulės modulių tipas", d.module_type, "text", 'placeholder="pvz. LONGI Solar LR7-54HVH-485M"')}${inp("o-mcount", "Kiekis, vnt.", d.module_count, "number", 'step="1" min="0" inputmode="numeric"')}</div>
       <div class="row-q">${inp("o-inv", "Inverteris", d.inverter, "text", 'placeholder="pvz. SOLIS S6-EH3P10K-H-EU"')}${inp("o-icount", "Kiekis, vnt.", d.inverter_count, "number", 'step="1" min="0" inputmode="numeric"')}</div>
-      ${lead || !o ? `${inp("o-cno", "Sutarties Nr. (bus akte)", d.contract_no)}<div class="row2">${inp("o-cdate", "Sutarties data", d.contract_date, "date")}${inp("o-csum", "Sutarties suma, €", d.contract_sum, "number", 'step="any" inputmode="decimal"')}</div>` : ""}
+      ${DZ.isAdmin() ? `${inp("o-cno", "Sutarties Nr. (bus akte)", d.contract_no)}<div class="row2">${inp("o-cdate", "Sutarties data", d.contract_date, "date")}${inp("o-csum", "Sutarties suma, €", d.contract_sum, "number", 'step="any" inputmode="decimal"')}</div>` : ""}
       ${DZ.isAdmin() ? `<div class="row3">${inp("o-doffer", "Pasiūlymas", d.offer_date, "date")}${inp("o-dinst", "Montavimas", d.install_date, "date")}${inp("o-ddone", "Atlikta", d.done_date, "date")}</div>` : ""}
       <label class="field"><span class="lbl">Būsena</span><select id="o-status">${Object.entries(DZ.OBJ_STATUS).map(([k, v]) => `<option value="${k}" ${k === d.status ? "selected" : ""}>${v}</option>`).join("")}</select></label>
       <label class="field"><span class="lbl">Pastabos</span><textarea id="o-notes">${esc(d.notes)}</textarea></label>
