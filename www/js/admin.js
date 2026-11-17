@@ -279,6 +279,11 @@
           <div class="row-end"><button class="btn primary" type="submit">Išsaugoti</button></div>
         </form>
         <div class="card">
+          <span class="lbl">El. pašto priminimai</span>
+          <p class="note">Kasdien 8:00 kiekvienas paskirtas darbuotojas (turintis paskyrą) gauna savo dienos užduotis su adresu ir žemėlapiu, administratoriai – visos dienos suvestinę. Siunčiama iš elredasaule@gmail.com.</p>
+          <div class="row-end"><button class="btn" data-act="reminder-test">Siųsti bandomąjį laišką man</button></div>
+        </div>
+        <div class="card">
           <span class="lbl">Google Drive (nuotraukos)</span>
           <p class="note">Nuotraukos saugomos elredasaule@gmail.com Google Drive aplanke „Darbų žurnalas“. Jei nuotraukos nebeįkeliamos, prijunkite iš naujo.</p>
           <div class="row-end"><button class="btn" data-act="drive-connect">Prijungti Google Drive iš naujo</button></div>
@@ -298,6 +303,17 @@
         DZ.toast("Išsaugota");
       });
     }
+  };
+  // Bandomasis rytinio priminimo laiškas (tik administratoriui, darbuotojams nesiunčiama)
+  DZ.actions["reminder-test"] = async t => {
+    t.disabled = true; DZ.toast("Siunčiama…");
+    try {
+      const r = await fetch(DZ.fnBase.replace(/drive-photo.*$/, "task-reminder") + "?test=1", { method: "POST", headers: { ...(await DZ.authHeaders()), "Content-Type": "application/json" }, body: "{}" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+      DZ.toast("Išsiųsta į " + (S.user ? S.user.email : "jūsų paštą"));
+    } catch (e) { DZ.toast("Nepavyko: " + (e.message || e), true); }
+    t.disabled = false;
   };
   DZ.actions["drive-connect"] = async () => {
     try {
