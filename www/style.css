@@ -384,7 +384,7 @@ input.eso-filled { border-color: #2f7a3e; box-shadow: 0 0 0 2px rgba(47,122,62,.
 
 /* ===== Android programėlė (html.native): kompaktiškas telefono vaizdas. Svetainė nesikeičia. ===== */
 .native body { font-size: 15px; line-height: 1.4; }
-.native .wrap { gap: 12px; padding-top: calc(8px + var(--st)); padding-bottom: calc(92px + var(--sb)); padding-left: max(12px, var(--sl)); padding-right: max(12px, var(--sr)); }
+.native .wrap { gap: 12px; padding-top: calc(8px + var(--st)); padding-bottom: calc(150px + var(--sb)); padding-left: max(12px, var(--sl)); padding-right: max(12px, var(--sr)); }
 .native .brand h1 { font-size: 1.2rem; }
 .native .brand span { font-size: .6rem; }
 .native .top .icon-btn { width: 34px; height: 34px; font-size: 1rem; }
