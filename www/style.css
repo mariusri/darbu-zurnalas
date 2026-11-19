@@ -419,3 +419,17 @@ input.eso-filled { border-color: #2f7a3e; box-shadow: 0 0 0 2px rgba(47,122,62,.
 .native table.info td.muted { font-size: .75rem; }
 /* Redagavimo langai – per visą ekraną */
 .native .sheet { max-height: calc(100vh - var(--st)); border-radius: 14px 14px 0 0; padding-left: 14px; padding-right: 14px; }
+
+/* Užduočių mėnesio vaizdas */
+.mday { gap: 4px; padding-top: 8px; padding-bottom: 6px; }
+.mday.today { border-color: var(--accent); }
+.mday .date-sep { padding: 0 0 4px; font-size: 1rem; width: 100%; }
+.mrow { display: grid; grid-template-columns: 3.2em minmax(0, 1fr) auto; gap: 8px; align-items: start; text-align: left; background: none; border: 0; border-top: 1px dashed var(--line); padding: 8px 0; color: var(--ink); width: 100%; }
+.mrow-t { font-family: var(--f-mono); font-size: .8rem; color: var(--muted); padding-top: 2px; }
+.mrow-b { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mrow-b b { font-weight: 600; overflow-wrap: anywhere; }
+.mrow-b .note { font-size: .82rem; overflow-wrap: anywhere; }
+.mrow.st-atlikta .mrow-b b { text-decoration: line-through; color: var(--muted); }
+.pill.ts-planuota { background: #e8eef6; border-color: #c9d6e6; color: #2b4a66; }
+.pill.ts-vykdoma { background: #ffe0c2; border-color: #f2b27a; color: #7a3a00; }
+.pill.ts-atlikta { background: #dcefe0; border-color: #a9d3b3; color: #1f5c2d; }

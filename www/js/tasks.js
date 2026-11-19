@@ -3,6 +3,7 @@
   "use strict";
   const DZ = window.DZ, S = DZ.state, $ = DZ.$, esc = DZ.esc;
   let mine = DZ.lsGet("tasks_mine") === "1";
+  let mode = DZ.lsGet("tasks_mode") === "month" ? "month" : "day";   // „Diena“ arba „Mėnuo“
 
   const isMineTask = t => (t.assignees || []).some(DZ.isMe);
   // Darbuotojas mato tik jam paskirtas užduotis
@@ -32,12 +33,14 @@
     fab: () => DZ.isLead() ? { label: "+ Užduotis", act: "task-new" } : null,
     html() {
       const list = visible();
+      const modeSeg = `<div class="seg small" role="group" aria-label="Rodinys"><button data-act="task-mode" data-v="day" aria-pressed="${mode === "day"}">Diena</button><button data-act="task-mode" data-v="month" aria-pressed="${mode === "month"}">Mėnuo</button></div>`;
+      if (mode === "month") return monthHtml(list, modeSeg);
       const marks = new Set(list.filter(t => t.status !== "atlikta").map(t => t.date));
       const day = list.filter(t => t.date === S.taskDate).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
       const late = list.filter(t => t.status !== "atlikta" && t.date < DZ.today()).sort((a, b) => a.date.localeCompare(b.date));
       const upcoming = list.filter(t => t.status !== "atlikta" && t.date > S.taskDate).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "")).slice(0, 8);
       return `<section class="stack16">
-        <div class="view-head"><h2>Užduotys</h2>
+        <div class="view-head"><h2>Užduotys</h2>${modeSeg}
           ${DZ.isLead() ? `<div class="seg small" role="group"><button data-act="task-mine" data-v="0" aria-pressed="${!mine}">Visos</button><button data-act="task-mine" data-v="1" aria-pressed="${mine}">Mano</button></div>` : ""}
         </div>
         ${(mine || !DZ.isLead()) && !DZ.myName() ? `<p class="note">Jūsų vardas profilyje nenurodytas, todėl „Mano“ negali rasti užduočių.</p>` : ""}
@@ -49,6 +52,41 @@
       </section>`;
     }
   };
+  // ---------- Mėnesio vaizdas: visos mėnesio užduotys pagal dienas ----------
+  function monthHtml(list, modeSeg) {
+    const ym = S.taskDate.slice(0, 7), [Y, M] = ym.split("-").map(Number);
+    const inMonth = list.filter(t => (t.date || "").slice(0, 7) === ym).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "99").localeCompare(b.time || "99"));
+    const byDay = new Map(); for (const t of inMonth) { if (!byDay.has(t.date)) byDay.set(t.date, []); byDay.get(t.date).push(t); }
+    const open = inMonth.filter(t => t.status !== "atlikta").length;
+    const today = DZ.today();
+    const row = t => {
+      const oname = t.object_id ? DZ.objName(t.object_id) : "";
+      return `<button class="mrow st-${esc(t.status)}" data-act="task-goday" data-v="${esc(t.date)}">
+        <span class="mrow-t">${esc(t.time || "")}</span>
+        <span class="mrow-b"><b>${esc(t.title || "Užduotis")}</b>${oname ? `<span class="note">📍 ${esc(oname)}</span>` : ""}${(t.assignees || []).length ? `<span class="note">${esc(t.assignees.join(", "))}</span>` : ""}</span>
+        <span class="pill ts-${esc(t.status)}">${esc(DZ.TASK_STATUS[t.status] || t.status)}</span>
+      </button>`;
+    };
+    return `<section class="stack16">
+      <div class="view-head"><h2>Užduotys</h2>${modeSeg}
+        ${DZ.isLead() ? `<div class="seg small" role="group"><button data-act="task-mine" data-v="0" aria-pressed="${!mine}">Visos</button><button data-act="task-mine" data-v="1" aria-pressed="${mine}">Mano</button></div>` : ""}
+      </div>
+      <div class="week"><div class="week-head">
+        <button class="icon-btn" data-act="task-month" data-v="-1" aria-label="Ankstesnis mėnuo">‹</button>
+        <div class="label">${esc(DZ.MON_NOM[M - 1])} ${Y}</div>
+        <button class="icon-btn" data-act="task-month" data-v="1" aria-label="Kitas mėnuo">›</button>
+      </div></div>
+      <div class="day-title"><h2>${inMonth.length ? `Užduočių: ${inMonth.length}` : "Užduočių nėra"}</h2><span class="meta">${inMonth.length ? `neatlikta ${open}` : ""}</span></div>
+      ${inMonth.length ? [...byDay.entries()].map(([d, ts]) => `<div class="card mday${d === today ? " today" : ""}">
+          <button class="date-sep" data-act="task-goday" data-v="${esc(d)}">${d === today ? "Šiandien, " : ""}${esc(DZ.longDate(d))} <span>${ts.length} užd. ›</span></button>
+          ${ts.map(row).join("")}
+        </div>`).join("")
+      : `<div class="empty"><span>Šį mėnesį užduočių nėra.</span>${DZ.isLead() ? `<button class="btn primary" data-act="task-new">+ Užduotis</button>` : ""}</div>`}
+    </section>`;
+  }
+  DZ.actions["task-mode"] = t => { mode = t.dataset.v === "month" ? "month" : "day"; DZ.lsSet("tasks_mode", mode); DZ.render(); };
+  DZ.actions["task-month"] = t => { const [Y, M] = S.taskDate.split("-").map(Number); const d = new Date(Y, M - 1 + Number(t.dataset.v), 1); S.taskDate = DZ.ymd(d); DZ.render(); };
+  DZ.actions["task-goday"] = t => { S.taskDate = t.dataset.v; mode = "day"; DZ.lsSet("tasks_mode", mode); DZ.render(); window.scrollTo(0, 0); };
   DZ.actions["task-date"] = t => { S.taskDate = t.dataset.v; DZ.render(); };
   DZ.actions["task-mine"] = t => { mine = t.dataset.v === "1"; DZ.lsSet("tasks_mine", mine ? "1" : "0"); DZ.render(); };
   DZ.actions["task-status"] = async t => {
