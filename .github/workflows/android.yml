@@ -354,6 +354,33 @@ jobs:
       - name: Sukurti Android projektą
         run: npx cap add android
 
+      - name: Šrifto padidinimo riba (telefono nustatymai neišpučia programėlės)
+        run: |
+          F=$(find android/app/src/main/java -name MainActivity.java | head -1)
+          test -n "$F" || { echo "Nerastas MainActivity.java"; exit 1; }
+          cat > "$F" <<'JAVA'
+          package lt.darbuzurnalas.app;
+
+          import android.webkit.WebSettings;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              // Android padidina WebView tekstą pagal telefono šrifto nustatymą (textZoom), o tarpai ir mygtukai
+              // lieka tokie patys – todėl programėlėje niekas netelpa. Leidžiame padidinti daugiausia iki 110 %.
+              private static final int MAX_TEXT_ZOOM = 110;
+
+              @Override
+              public void onResume() {
+                  super.onResume();
+                  try {
+                      WebSettings s = getBridge().getWebView().getSettings();
+                      if (s.getTextZoom() > MAX_TEXT_ZOOM) s.setTextZoom(MAX_TEXT_ZOOM);
+                  } catch (Exception ignored) { }
+              }
+          }
+          JAVA
+          cat "$F"
+
       - name: Ikonos, versija ir parašo raktas
         run: |
           cp -r android-res/* android/app/src/main/res/

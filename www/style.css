@@ -381,3 +381,41 @@ input.eso-filled { border-color: #2f7a3e; box-shadow: 0 0 0 2px rgba(47,122,62,.
 .map-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .map-row .note { min-width: 0; overflow-wrap: anywhere; flex: 1 1 160px; }
 .map-row .btn { flex-shrink: 0; }
+
+/* ===== Android programėlė (html.native): kompaktiškas telefono vaizdas. Svetainė nesikeičia. ===== */
+.native body { font-size: 15px; line-height: 1.4; }
+.native .wrap { gap: 12px; padding-top: calc(8px + var(--st)); padding-bottom: calc(92px + var(--sb)); padding-left: max(12px, var(--sl)); padding-right: max(12px, var(--sr)); }
+.native .brand h1 { font-size: 1.2rem; }
+.native .brand span { font-size: .6rem; }
+.native .top .icon-btn { width: 34px; height: 34px; font-size: 1rem; }
+.native .view-head { gap: 8px; }
+.native .view-head h2 { font-size: 1.2rem; }
+.native .day-title h2 { font-size: 1rem; }
+.native .week { padding: 6px 8px; gap: 4px; }
+.native .week-head .icon-btn { width: 32px; height: 32px; }
+.native .week-head .label { font-size: .95rem; }
+.native .day { padding: 4px 0 5px; }
+.native .day b { font-size: 1.05rem; }
+.native .day small { font-size: .62rem; }
+.native .card, .native .month-card { padding: 12px; gap: 8px; }
+.native .entry-head h3, .native .task-head h3 { font-size: 1.05rem; }
+.native .obj-card { padding: 10px 12px; }
+.native .obj-card b { font-size: 1.02rem; }
+.native .btn { padding-top: 7px; padding-bottom: 7px; }
+.native .chip-btn { padding: 5px 10px; font-size: .85rem; }
+.native .seg button { padding: 5px 10px; font-size: .85rem; }
+/* Apvalus „+“ mygtukas vietoj ilgo užrašo – neuždengia turinio */
+.native .fab { width: 54px; height: 54px; padding: 0; border-radius: 50%; font-size: 0; display: grid; place-items: center; right: max(14px, var(--sr)); bottom: calc(66px + var(--sb)); }
+.native .fab::before { content: "+"; font-size: 30px; line-height: 1; font-weight: 700; margin-top: -2px; }
+/* Apatinis meniu – žemesnis, užrašai nesusilieja */
+.native .bottom-nav { padding-top: 2px; padding-bottom: calc(2px + var(--sb)); }
+.native .bottom-nav button { padding: 4px 0; font-size: .62rem; gap: 1px; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native .bottom-nav svg { width: 22px; height: 22px; }
+.native .bottom-nav button[aria-current="page"] svg { padding: 2px 10px; }
+/* Lentelės objekto kortelėje – eilutės viena po kita, kad neišlįstų už ekrano */
+.native table.info, .native table.info tbody, .native table.info tr, .native table.info td { display: block; width: auto; }
+.native table.info tr { padding: 4px 0; border-top: 1px dashed var(--line); }
+.native table.info td { padding: 0; border: 0; overflow-wrap: anywhere; }
+.native table.info td.muted { font-size: .75rem; }
+/* Redagavimo langai – per visą ekraną */
+.native .sheet { max-height: calc(100vh - var(--st)); border-radius: 14px 14px 0 0; padding-left: 14px; padding-right: 14px; }

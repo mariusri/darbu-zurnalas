@@ -2,6 +2,9 @@
 (function () {
   "use strict";
   const DZ = window.DZ = { views: {}, actions: {}, hooks: { afterLoad: [] } };
+  // Android programėlė (APK) – atskira, kompaktiška išvaizda (html.native). Naršyklėje išbandyti: ?native=1
+  DZ.native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || /[?&]native=1/.test(location.search);
+  if (DZ.native) document.documentElement.classList.add("native");
 
   // ---------- Pagalbinės ----------
   DZ.MON_GEN = ["sausio","vasario","kovo","balandžio","gegužės","birželio","liepos","rugpjūčio","rugsėjo","spalio","lapkričio","gruodžio"];
@@ -402,7 +405,7 @@
     host.innerHTML = v.html();
     const fab = v.fab ? v.fab() : null;
     $("#fab").hidden = !fab;
-    if (fab) { $("#fab").textContent = fab.label; $("#fab").dataset.act = fab.act; }
+    if (fab) { $("#fab").textContent = fab.label; $("#fab").dataset.act = fab.act; $("#fab").setAttribute("aria-label", fab.label); $("#fab").title = fab.label; }
     if (v.after) v.after();
     const adm = $("#menu-btn");
     const waiting = DZ.isAdmin() ? state.profiles.filter(p => p.status === "laukia").length : 0;
