@@ -126,7 +126,7 @@
       ${!tpl ? `<div class="row2"><label class="field"><span class="lbl">Data</span><input type="date" id="of-date" value="${esc(d.date)}"></label>
         <label class="field"><span class="lbl">Galioja iki</span><input type="date" id="of-valid" value="${esc(d.valid_until || "")}"></label></div>` : ""}
       <div class="field"><span class="lbl">Eilutės (kainos be PVM)</span>
-        <datalist id="of-prod">${prods.map(p => `<option value="${esc(p.name)}"></option>`).join("")}${shopNames.map(n => `<option value="${esc(n)}">elreda.lt</option>`).join("")}</datalist>
+        <datalist id="of-prod">${prods.map(p => `<option value="${esc(p.name)}"></option>`).join("")}${shopNames.map(n => `<option value="${esc(n)}"></option>`).join("")}</datalist>
         <div id="of-lines" class="of-lines"></div>
         <div class="row-between">
           <button type="button" class="btn" id="of-add">+ Eilutė</button>
