@@ -433,3 +433,8 @@ input.eso-filled { border-color: #2f7a3e; box-shadow: 0 0 0 2px rgba(47,122,62,.
 .pill.ts-planuota { background: #e8eef6; border-color: #c9d6e6; color: #2b4a66; }
 .pill.ts-vykdoma { background: #ffe0c2; border-color: #f2b27a; color: #7a3a00; }
 .pill.ts-atlikta { background: #dcefe0; border-color: #a9d3b3; color: #1f5c2d; }
+
+/* Elreda.lt prekių sąrašas (tik administratoriams) */
+.shop-table td { vertical-align: top; }
+.shop-table td a { color: var(--ink); text-decoration: none; }
+.shop-table td .muted, .shop-table td.q .muted { font-size: .78rem; }

@@ -116,6 +116,7 @@
       ? { name: "", title: "Saulės elektrinė {kW} kW", show_prices: false, lines: [], notes: "" }
       : { title: kwTitle(o), date: DZ.today(), valid_until: DZ.addDays(DZ.today(), 30), show_prices: false, vat: 21, discount: 0, lines: objectLines(o), notes: last ? last.notes : "" };
     const prods = S.products.filter(p => p.active !== false);
+    const shopNames = (S.shop || []).filter(p => !prods.some(x => DZ.norm(x.name) === DZ.norm(p.name))).map(p => p.name);
     DZ.openSheet(`
       <h2>${tpl ? (x ? "Redaguoti šabloną" : "Naujas šablonas") : x ? `Pasiūlymas Nr. ${esc(x.no)}` : "Naujas pasiūlymas"}</h2>
       ${!tpl ? `<p class="note">${esc(o.name)}${o.client_name ? " · " + esc(o.client_name) : ""}</p>` : ""}
@@ -125,7 +126,7 @@
       ${!tpl ? `<div class="row2"><label class="field"><span class="lbl">Data</span><input type="date" id="of-date" value="${esc(d.date)}"></label>
         <label class="field"><span class="lbl">Galioja iki</span><input type="date" id="of-valid" value="${esc(d.valid_until || "")}"></label></div>` : ""}
       <div class="field"><span class="lbl">Eilutės (kainos be PVM)</span>
-        <datalist id="of-prod">${prods.map(p => `<option value="${esc(p.name)}"></option>`).join("")}</datalist>
+        <datalist id="of-prod">${prods.map(p => `<option value="${esc(p.name)}"></option>`).join("")}${shopNames.map(n => `<option value="${esc(n)}">elreda.lt</option>`).join("")}</datalist>
         <div id="of-lines" class="of-lines"></div>
         <div class="row-between">
           <button type="button" class="btn" id="of-add">+ Eilutė</button>
@@ -152,7 +153,7 @@
     const form = $("#offer-form");
     form.addEventListener("input", ev => {
       if (ev.target.classList.contains("of-name")) {
-        const r = ev.target.closest(".of-row"), p = DZ.findProduct(ev.target.value);
+        const r = ev.target.closest(".of-row"), p = DZ.findProduct(ev.target.value) || (DZ.findShop && DZ.findShop(ev.target.value));
         if (p && $(".of-price", r).value === "") { $(".of-price", r).value = p.price ?? ""; if (UNITS.includes(p.unit)) $(".of-unit", r).value = p.unit; }
       }
       recalc();
