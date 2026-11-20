@@ -214,7 +214,9 @@
           <input class="m-qty" id="m-qty-${i}" type="number" inputmode="decimal" min="0" step="any" placeholder="0" value="${esc(m.qty)}" aria-label="Kiekis">
           <select class="m-unit" id="m-unit-${i}" aria-label="Vienetai">${DZ.UNITS.map(u => `<option ${u === (m.unit || "vnt.") ? "selected" : ""}>${u}</option>`).join("")}</select>
           <button type="button" class="icon-btn" data-act="m-rm" data-i="${i}" aria-label="Pašalinti eilutę">×</button></div>`).join("")}</div>
-        <button type="button" class="btn" data-act="m-add" style="align-self:flex-start">+ Pridėti medžiagą</button>
+        <div class="photo-btns"><button type="button" class="btn" data-act="m-add">+ Pridėti medžiagą</button>
+          <label class="btn">${ed.ocr ? "Atpažįstama…" : "Iš nuotraukos"}<input type="file" id="m-ocr" accept="image/*" ${ed.ocr ? "disabled" : ""}></label></div>
+        <span class="note">${ed.ocr ? "Skaitomas sąrašas iš nuotraukos – tai gali užtrukti iki minutės." : "„Iš nuotraukos“ – nufotografuokite ranka rašytą sąrašą ar važtaraštį: medžiagos ir kiekiai bus įrašyti, tik patikrinkite."}</span>
       </div>
       <div class="field"><span class="lbl">Nuotraukos</span>
         ${d.photos.length || ed.uploading.length ? `<div class="thumbs">
@@ -236,6 +238,7 @@
     $("#w-rows").addEventListener("input", updateWorkerHours); $("#w-rows").addEventListener("change", updateWorkerHours);
     $("#f-cam").addEventListener("change", ev => addPhotos([...ev.target.files]));
     $("#f-gal").addEventListener("change", ev => addPhotos([...ev.target.files]));
+    $("#m-ocr").addEventListener("change", ev => { const f = ev.target.files[0]; if (f) matsFromPhoto(f); });
     // Pasirinkus prekę iš katalogo – jos vienetai
     $("#ed-form").addEventListener("change", ev => {
       if (!ev.target.classList.contains("m-name")) return;
@@ -255,6 +258,35 @@
       const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.82));
       return blob || file;
     } catch (_) { return file; }
+  }
+  // Medžiagos iš nuotraukos (Edge funkcija materials-photo, Claude): tik pavadinimai ir kiekiai
+  async function matsFromPhoto(file) {
+    syncForm(); ed.ocr = true; ed.error = ""; drawEditor();
+    const cur = ed;
+    try {
+      if (S.offline) throw new Error("reikia interneto ryšio");
+      const blob = await shrink(file);
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
+      const resp = await fetch(DZ.fnBase.replace(/drive-photo.*$/, "materials-photo"), {
+        method: "POST", headers: { ...(await DZ.authHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({ image: b64, known: knownMaterials() })
+      });
+      const j = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(j.error || "HTTP " + resp.status);
+      if (ed !== cur) return;
+      syncForm();
+      const add = (j.materials || []).map(m => {
+        const p = DZ.findProduct(m.name);
+        return { name: p ? p.name : m.name, qty: String(m.qty), unit: p && DZ.UNITS.includes(p.unit) ? p.unit : m.unit };
+      });
+      ed.data.materials = ed.data.materials.filter(m => m.name.trim()).concat(add);
+      if (!ed.data.materials.length) ed.data.materials.push({ name: "", qty: "", unit: "vnt." });
+      if (j.object && !ed.data.object.trim()) ed.data.object = j.object;
+      DZ.toast(add.length ? `Atpažinta medžiagų: ${add.length}. Patikrinkite kiekius.` : "Medžiagų nuotraukoje nerasta", !add.length);
+    } catch (e) {
+      if (ed === cur) ed.error = "Nepavyko atpažinti: " + (e.message || e);
+    }
+    if (ed === cur) { ed.ocr = false; drawEditor(); }
   }
   async function addPhotos(files) {
     syncForm();
