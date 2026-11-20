@@ -21,13 +21,18 @@ Vanilla JS be bundlerio, bendra vardų sritis `window.DZ` (`DZ.state`, `DZ.views
 - `crm.js` – etapai (Užklausa → Pasiūlymas → Montavimas → Apmokėjimas → Užbaigta / Atšaukta), kitas veiksmas, skiltis „Šiandien“.
 - `pay.js` – sąskaitos ir mokėjimai. `service.js` – SMS šablonai (sms: nuoroda), garantinės užklausos.
 - `offers.js` – komerciniai pasiūlymai (tik administratoriams): eilutės iš katalogo, viena kaina arba eilučių kainos, nuolaida, PVM, šablonai (`offer_templates`, eilutės `per`: "kW"/"mod" – kiekis pagal objektą), PDF (jsPDF + DejaVuSans) → Drive ir `object_docs` (tipas „pasiulymas“).
+- `shop.js` – elreda.lt parduotuvės prekės su kainomis (`shop_products`, tik admin; atnaujina Edge funkcija `shop-sync` iš WooCommerce Store API, kainos su PVM → be PVM /1,21). Naudojamos pasiūlymuose. Darbuotojams – atskiras medžiagų katalogas `products`.
+- `contract.js` – sutartis (PDF) iš objekto ir pasiūlymo → Drive ir `object_docs` (tipas „sutartis“); terminai/garantijos `settings.contract`.
+- `centas.js` – kontrahentų XLS eksportas į buhalterinę programą „Centas“ (20 stulpelių), įkeliamas ir į Drive.
+- Programėlė (APK) – `html.native` kompaktiška išvaizda (`?native=1` naršyklėje); `MainActivity` (generuojamas workflow) riboja Android šrifto padidinimą iki 110 %.
+- Edge `task-reminder` – kasdien 8:00 (pg_cron `supabase/reminders.sql`) el. laiškai su dienos užduotimis per Gmail (paslaptis `GMAIL_APP_PASSWORD`).
 - `eso.js` – ESO prijungimo sąlygų ir rangovo deklaracijos importas (pdf.js / Tesseract iš jsDelivr CDN), užpildo objekto laukus, `objects.eso` jsonb.
 
 ## Rolės
 admin (2 administratoriai), brigadininkas (lead), darbuotojas (mato tik „Diena“ ir savo užduotis). CRM, apmokėjimai, garantija, dokumentai – tik administratoriams (RLS `public.is_admin()`).
 
 ## Duomenų bazė
-SQL failai `supabase/*.sql` (v2, crm, pay, service, profile, offers). Lentelės: profiles, objects (+ eso jsonb), entries, tasks, products, settings, object_docs, object_crm, object_invoices, object_payments, object_warranty, offers (no – numeris nuo 179), offer_templates, workers, drive_photos, drive_folders, google_tokens. Funkcija `set_my_name(text)`.
+SQL failai `supabase/*.sql` (v2, crm, pay, service, profile, offers). Lentelės: profiles, objects (+ eso jsonb), entries, tasks, products, settings, object_docs, object_crm, object_invoices, object_payments, object_warranty, offers (no – numeris nuo 179), offer_templates, shop_products, reminder_log, workers, drive_photos, drive_folders, google_tokens. Funkcija `set_my_name(text)`.
 
 ## Taisyklės
 - Slaptų raktų (API raktai, tokenai, slaptažodžiai) į kodą ar laukus nerašyti – tik Supabase secrets, įrašo pats naudotojas.
